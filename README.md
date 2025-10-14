@@ -1,5 +1,16 @@
 # Master's thesis project
 
+## Dependencies
+
+This repository depends mostly on [tddnnf](https://github.com/ecivini/tddnnf), which is an implementation of ... (TODO: Add references to algorithm), based on the [TheoryConsistentDecisionDiagrams](https://github.com/MaxMichelutti/TheoryConsistentDecisionDiagrams) package.
+
+In order to install it, run:
+```bash
+$ virtualenv env
+$ source env/bin/activate
+$ pip3 install theorydd@git+https://github.com/ecivini/tddnnf@main
+```
+
 ## Scripts
 
 This directory contains the scripts I used to help me complete this project.
