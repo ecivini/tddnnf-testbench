@@ -70,6 +70,7 @@ def get_already_computed_benchmarks(base_path: str) -> list[str]:
 
 def compile_task(data: dict) -> None:
     try:
+        print(f"[+] Compiling formula {data["formula_path"]}...")
         command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]}".split(" ")
         _ = subprocess.run(
             command,
