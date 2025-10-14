@@ -1,0 +1,17 @@
+# MB of memory per core
+memory: 2048
+
+# Maximum allowed solving time per problem in seconds
+timeout: 300
+
+# Number of concurrent evaluations running
+processes: 8
+
+# Benchmarks
+benchmarks: [
+  # Base test cases
+  "data/benchmark/randgen/data/problems_b10_r10_d4_m25_s1234"
+] 
+
+# Output dir, add a / to the end
+results: "results/"
