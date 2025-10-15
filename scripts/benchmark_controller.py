@@ -1,7 +1,6 @@
 from typing import Generator
 import yaml
 import os
-import csv
 from multiprocessing import Pool
 import random
 import time
@@ -36,7 +35,6 @@ def check_ext(file_path: str, ext: str = ".smt2") -> bool:
     _, fext = os.path.splitext(file_path)
     return fext == ext
 
-
 def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
     for path in paths:
         if os.path.isfile(path):
@@ -54,20 +52,6 @@ def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
                 else:
                     print("[-] Skipping test case: invalid file name", test_case)
 
-def get_already_computed_benchmarks(base_path: str) -> list[str]:
-    if not os.path.isfile(base_path):
-        print("[+] No results file for solver found.")
-        return []
-    
-    computed = []
-    with open(base_path) as csvfile:
-        benchmark = csv.reader(csvfile, delimiter=' ', quotechar='|')
-        for row in benchmark:
-            cols = row[0].split(",")
-            computed.append(cols[3])
-
-    return computed[1:]
-
 def compile_task(data: dict) -> None:
     try:
         print(f"[+] Compiling formula {data["formula_path"]}...")
@@ -83,6 +67,7 @@ def compile_task(data: dict) -> None:
         print(f"[-] Timeout expired during compilation of {data['formula_path']}")
     except Exception as e:
         print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
+
 def main():
     config = get_config()
 
