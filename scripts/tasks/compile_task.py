@@ -6,6 +6,16 @@ import os
 import json
 import time
 
+TIMES_TO_CONSIDER = [ 
+    # "All-SMT computation time", # this is already included in "lemmas loading time"
+    "lemmas loading time",  
+    "phi normalization time",
+    "DIMACS translation time",
+    "refinement serialization time",
+    "dDNNF compilation time",
+    "pysmt translation time"
+]
+
 def main():
     if len(sys.argv) != 3:
         print("Usage: python3 scripts/tasks/compile_tasks.py <input formula> <base output path>")
@@ -18,17 +28,23 @@ def main():
     phi = read_smtlib(sys.argv[1])
 
     logger = {}
-    tddnnf_file_path = os.path.join(sys.argv[2], "tddnnf.smt2")
 
     start = time.time()
     _ = TheoryDDNNF(
         phi,
         computation_logger=logger,
-        out_path=tddnnf_file_path
+        base_out_path=sys.argv[2]
     )
-    time_taken = time.time() - start
-    logger["T-DDNNF"]["Total time"] = time_taken
+    total_time = time.time() - start
 
+    # Compute effective time
+    effective_time = 0.0
+    for key, value in logger["T-DDNNF"].items():
+        if key in TIMES_TO_CONSIDER:
+            effective_time += value
+
+    logger["T-DDNNF"]["Effective time"] = effective_time
+    logger["T-DDNNF"]["Total time"] = total_time # THis includes also the time to store the output files
     log_path = os.path.join(sys.argv[2], "logs.json")
     with open(log_path, "w") as log_file:
         json.dump(logger, log_file, indent=4)   
