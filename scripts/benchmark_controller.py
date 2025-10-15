@@ -1,6 +1,7 @@
 from typing import Generator
 import yaml
 import os
+import sys
 from multiprocessing import Pool
 import random
 import time
@@ -10,6 +11,13 @@ import resource
 ###############################################################################
 
 CONFIG_FILE = "config.yaml"
+
+TASK_COMPILE = "compile"
+TASK_QUERY = "query"
+ALLOWED_TASKS = [
+    TASK_COMPILE,
+    TASK_QUERY
+]
 
 ###############################################################################
 
@@ -69,6 +77,12 @@ def compile_task(data: dict) -> None:
         print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
 
 def main():
+
+    if len(sys.argv) != 2 or sys.argv[1] not in ALLOWED_TASKS:
+        print("Usage: python3 scripts/benchmark_controller.py <compile|query>")
+        sys.exit(1)
+    selected_task = sys.argv[1]
+
     config = get_config()
 
     # Create output file
@@ -93,9 +107,16 @@ def main():
         }
         datas.append(data)
 
+    task_fn = None
+    if selected_task == TASK_COMPILE:
+        task_fn = compile_task
+    elif selected_task == TASK_QUERY:
+        print("[-] Query task not implemented yet")
+        sys.exit(1)
+
     random.shuffle(datas)
     with Pool(processes=processes) as pool:
-        for _ in pool.imap_unordered(compile_task, datas):
+        for _ in pool.imap_unordered(task_fn, datas):
             continue
     
 ###############################################################################
