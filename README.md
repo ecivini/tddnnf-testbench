@@ -25,7 +25,7 @@ $ cd <root of this repository>
 $ python3 scripts/extract_benchmark_files.py 
 ```
 
-### benchmark_controler.py
+### benchmark_controller.py
 
 As of now, it executes the compilation tasks of the test cases specified in the config.yaml file. Its output contains the t-d-DNNF formula in SMT-LIB together with the boolean abstraction and mapping of each test case. To use it, run:
 
