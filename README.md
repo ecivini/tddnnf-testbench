@@ -24,3 +24,12 @@ the results of the tests done by Massimo in a folder called *data/michelutti_tdd
 $ cd <root of this repository>
 $ python3 scripts/extract_benchmark_files.py 
 ```
+
+### benchmark_controler.py
+
+As of now, it executes the compilation tasks of the test cases specified in the config.yaml file. Its output contains the t-d-DNNF formula in SMT-LIB together with the boolean abstraction and mapping of each test case. To use it, run:
+
+```bash
+$ cd <root of this repository>
+$ python3 scripts/benchmark_controler.py 
+```
