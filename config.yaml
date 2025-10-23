@@ -5,12 +5,21 @@ memory: 2048
 timeout: 300
 
 # Number of concurrent evaluations running
-processes: 8
+processes: 6
+
+# For compilation tasks, number of concurrent AllSMT processes per task that enumerates
+# total truth assignments
+allsmt_processes: 4
 
 # Benchmarks
 benchmarks: [
   # Base test cases
-  "data/benchmark/randgen/data/problems_b10_r10_d4_m25_s1234"
+  "data/benchmark/randgen/data/problems_b10_r10_d4_m25_s1234",
+  "data/benchmark/randgen/data/problems_b10_r10_d4_m25_s4321",
+  "data/benchmark/randgen/data/problems_b10_r10_d5_m25_s12345",
+  "data/benchmark/randgen/data/problems_b10_r10_d5_m25_s54321",
+  # "data/benchmark/randgen/data/problems_b10_r10_d6_m25_s123456",
+  # "data/benchmark/randgen/data/problems_b10_r10_d6_m25_s654321",
 ] 
 
 # Output dir, add a / to the end

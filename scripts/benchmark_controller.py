@@ -63,7 +63,7 @@ def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
 def compile_task(data: dict) -> None:
     try:
         print(f"[+] Compiling formula {data["formula_path"]}...")
-        command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]}".split(" ")
+        command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]} {data["allsmt_processes"]}".split(" ")
         _ = subprocess.run(
             command,
             stdout=subprocess.PIPE,
@@ -94,6 +94,7 @@ def main():
     output_base_path = os.path.join(base_path, timestamp)
 
     processes = int(config["processes"])
+    allsmt_processes = int(config["allsmt_processes"])
 
     # Run tests
     datas = []
@@ -103,7 +104,8 @@ def main():
             "timeout": int(config["timeout"]),
             "memory_limit": config["memory"],
             "formula_path": test_case,
-            "base_output_path": output_path
+            "base_output_path": output_path,
+            "allsmt_processes": allsmt_processes
         }
         datas.append(data)
 
@@ -115,9 +117,13 @@ def main():
         sys.exit(1)
 
     random.shuffle(datas)
+
+    start_ts = time.time()
     with Pool(processes=processes) as pool:
         for _ in pool.imap_unordered(task_fn, datas):
             continue
+    total_time = time.time() - start_ts
+    print(f"[+] Benchmark completed in {total_time:.2f} seconds")
     
 ###############################################################################
 
