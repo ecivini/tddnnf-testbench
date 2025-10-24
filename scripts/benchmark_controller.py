@@ -7,6 +7,7 @@ import random
 import time
 import subprocess
 import resource
+import json
 
 ###############################################################################
 
@@ -60,7 +61,8 @@ def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
                 else:
                     print("[-] Skipping test case: invalid file name", test_case)
 
-def compile_task(data: dict) -> None:
+def compile_task(data: dict) -> tuple:
+    compilation_failed = False
     try:
         print(f"[+] Compiling formula {data["formula_path"]}...")
         command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]} {data["allsmt_processes"]}"
@@ -77,10 +79,18 @@ def compile_task(data: dict) -> None:
                 f"[-] Error during compilation of {data['formula_path']}:", 
                 result.stderr.decode("utf-8")
             )
+            compilation_failed = True
     except subprocess.TimeoutExpired:
         print(f"[-] Timeout expired during compilation of {data['formula_path']}")
+        compilation_failed = True
     except Exception as e:
         print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
+        compilation_failed = True
+
+    if compilation_failed:
+        return False, data["formula_path"]
+
+    return True, None
 
 def main():
 
@@ -125,12 +135,20 @@ def main():
     random.shuffle(datas)
 
     start_ts = time.time()
+    errored_cases = []
     with Pool(processes=processes) as pool:
-        for _ in pool.imap_unordered(task_fn, datas):
-            continue
+        for succeeded, test_case in pool.imap_unordered(task_fn, datas):
+            if not succeeded:
+                errored_cases.append(test_case)
+
+    if errored_cases:
+        errors_file_path = os.path.join(output_base_path, "errors.json")
+        with open(errors_file_path, "w+") as errors_file:
+            json.dump(errored_cases, errors_file, indent=4)
+
     total_time = time.time() - start_ts
     print(f"[+] Benchmark completed in {total_time:.2f} seconds")
-    
+
 ###############################################################################
 
 if __name__ == "__main__":
