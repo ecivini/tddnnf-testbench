@@ -30,12 +30,16 @@ def main():
     logger = {}
 
     start = time.time()
-    _ = TheoryDDNNF(
-        phi,
-        computation_logger=logger,
-        base_out_path=sys.argv[2],
-        parallel_allsmt_procs=int(sys.argv[3])
-    )
+    try:
+        _ = TheoryDDNNF(
+            phi,
+            computation_logger=logger,
+            base_out_path=sys.argv[2],
+            parallel_allsmt_procs=int(sys.argv[3])
+        )
+    except Exception as e:
+        print(f"[-] Exception during compilation of {sys.argv[1]}")
+        sys.exit(1)
     total_time = time.time() - start
 
     # Compute effective time

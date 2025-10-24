@@ -63,14 +63,20 @@ def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
 def compile_task(data: dict) -> None:
     try:
         print(f"[+] Compiling formula {data["formula_path"]}...")
-        command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]} {data["allsmt_processes"]}".split(" ")
-        _ = subprocess.run(
+        command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]} {data["allsmt_processes"]}"
+        command = command.split(" ")
+        result = subprocess.run(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=data["timeout"] + 5,
             preexec_fn=set_memory_limit(int(data["memory_limit"]))
         )
+        if result.returncode != 0:
+            print(
+                f"[-] Error during compilation of {data['formula_path']}:", 
+                result.stderr.decode("utf-8")
+            )
     except subprocess.TimeoutExpired:
         print(f"[-] Timeout expired during compilation of {data['formula_path']}")
     except Exception as e:
