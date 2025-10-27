@@ -62,7 +62,12 @@ def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
                     print("[-] Skipping test case: invalid file name", test_case)
 
 def compile_task(data: dict) -> tuple:
-    compilation_failed = False
+    """
+    Compiles a given SMT formula using the compile_task script.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    compilation_succeeded = True
+    error_message = ""
     try:
         print(f"[+] Compiling formula {data["formula_path"]}...")
         command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]} {data["allsmt_processes"]}"
@@ -79,18 +84,18 @@ def compile_task(data: dict) -> tuple:
                 f"[-] Error during compilation of {data['formula_path']}:", 
                 result.stderr.decode("utf-8")
             )
-            compilation_failed = True
+            compilation_succeeded = False
+            error_message = result.stderr.decode("utf-8")
     except subprocess.TimeoutExpired:
-        print(f"[-] Timeout expired during compilation of {data['formula_path']}")
-        compilation_failed = True
+        print(f"[-] Timeout during compilation of {data['formula_path']}")
+        compilation_succeeded = False
+        error_message = "timeout"
     except Exception as e:
         print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
-        compilation_failed = True
+        compilation_succeeded = False
+        error_message = str(e)
 
-    if compilation_failed:
-        return False, data["formula_path"]
-
-    return True, None
+    return compilation_succeeded, data["formula_path"], error_message
 
 def main():
 
@@ -135,11 +140,11 @@ def main():
     random.shuffle(datas)
 
     start_ts = time.time()
-    errored_cases = []
+    errored_cases = {}
     with Pool(processes=processes) as pool:
-        for succeeded, test_case in pool.imap_unordered(task_fn, datas):
+        for succeeded, test_case, error_message in pool.imap_unordered(task_fn, datas):
             if not succeeded:
-                errored_cases.append(test_case)
+                errored_cases[test_case] = error_message
 
     if errored_cases:
         errors_file_path = os.path.join(output_base_path, "errors.json")
