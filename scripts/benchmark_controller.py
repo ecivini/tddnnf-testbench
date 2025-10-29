@@ -44,22 +44,46 @@ def check_ext(file_path: str, ext: str = ".smt2") -> bool:
     _, fext = os.path.splitext(file_path)
     return fext == ext
 
-def get_test_cases(paths: list[str]) -> Generator[str, None, None]:
+def get_test_cases(paths: list[str], already_computed: list[str]) -> Generator[str, None, None]:
     for path in paths:
         if os.path.isfile(path):
-            if check_ext(path):
+            if check_ext(path) and path not in already_computed:
                 yield path
             else:
-                print("[-] Skipping test case: invalid file name", path)
+                print("[-] Skipping test case:", path)
 
         for root, _, files in os.walk(path):
             for file_path in files:
                 test_case = os.path.join(root, file_path)
 
-                if check_ext(test_case):
+                if check_ext(test_case) and test_case not in already_computed:
                     yield test_case
                 else:
-                    print("[-] Skipping test case: invalid file name", test_case)
+                    print("[-] Skipping test case:", test_case)
+
+def _computed_selector_for_compilation(files: list[str], task: str) -> bool:
+    """
+    Selector function to determine if a benchmark has already been computed for compilation task.
+    A benchmark is considered computed if there is a file named "logs.json" in its result directory.
+    """
+    if task != TASK_COMPILE:
+        return False
+
+    return "logs.json" in files
+
+def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
+    """
+    Returns a list of already computed benchmarks in the given base path.
+    """
+    computed = []
+    for root, _, files in os.walk(base_path):
+        if _computed_selector_for_compilation(files, task):
+            # Remove the result path and add .smt2 extension
+            benchmark_path = root[len(base_path)+1:] + ".smt2"
+            computed.append(benchmark_path)
+            print(benchmark_path, "already computed, skipping...")
+
+    return computed
 
 def compile_task(data: dict) -> tuple:
     """
@@ -99,10 +123,11 @@ def compile_task(data: dict) -> tuple:
 
 def main():
 
-    if len(sys.argv) != 2 or sys.argv[1] not in ALLOWED_TASKS:
-        print("Usage: python3 scripts/benchmark_controller.py <compile|query>")
+    if len(sys.argv) != 3 or sys.argv[1] not in ALLOWED_TASKS:
+        print("Usage: python3 scripts/benchmark_controller.py <compile|query> <test_name>")
         sys.exit(1)
     selected_task = sys.argv[1]
+    test_name = sys.argv[2]
 
     config = get_config()
 
@@ -111,15 +136,16 @@ def main():
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-    timestamp = str(int(time.time()))
-    output_base_path = os.path.join(base_path, timestamp)
+    output_base_path = os.path.join(base_path, test_name)
+
+    already_computed = get_already_computed_benchmarks(output_base_path, selected_task)
 
     processes = int(config["processes"])
     allsmt_processes = int(config["allsmt_processes"])
 
     # Run tests
     datas = []
-    for test_case in get_test_cases(config["benchmarks"]):
+    for test_case in get_test_cases(config["benchmarks"], already_computed):
         output_path = os.path.join(output_base_path, test_case)[:-5] # remove .smt2
         data = {
             "timeout": int(config["timeout"]),
