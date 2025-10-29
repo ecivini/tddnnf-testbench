@@ -6,19 +6,23 @@ import os
 import json
 import time
 
-TIMES_TO_CONSIDER = [ 
-    # "All-SMT computation time", # this is already included in "lemmas loading time"
-    "lemmas loading time",  
+
+TIMES_TO_CONSIDER = [
+    "lemmas loading time",
     "phi normalization time",
     "BC-S1.2 translation time",
     "refinement serialization time",
     "dDNNF compilation time",
-    "pysmt translation time"
+    "pysmt translation time",
 ]
+
 
 def main():
     if len(sys.argv) != 4:
-        print("Usage: python3 scripts/tasks/compile_tasks.py <input formula> <base output path> <allsmt_processes>")
+        print(
+            "Usage: python3 scripts/tasks/compile_tasks.py <input formula> "
+            "<base output path> <allsmt_processes>"
+        )
         sys.exit(1)
 
     # Check base output path exists, otherwise create it
@@ -37,7 +41,7 @@ def main():
             base_out_path=sys.argv[2],
             parallel_allsmt_procs=int(sys.argv[3])
         )
-    except Exception as e:
+    except Exception:
         print(f"[-] Exception during compilation of {sys.argv[1]}")
         sys.exit(1)
     total_time = time.time() - start
@@ -49,10 +53,14 @@ def main():
             effective_time += value
 
     logger["T-DDNNF"]["Effective time"] = effective_time
-    logger["T-DDNNF"]["Total time"] = total_time # This includes also the time to store the output files
+
+    # This includes also the time to store the output files
+    logger["T-DDNNF"]["Total time"] = total_time
+
     log_path = os.path.join(sys.argv[2], "logs.json")
     with open(log_path, "w") as log_file:
-        json.dump(logger, log_file, indent=4)   
+        json.dump(logger, log_file, indent=4)
+
 
 if __name__ == "__main__":
     main()

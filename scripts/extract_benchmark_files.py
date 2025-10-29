@@ -1,19 +1,21 @@
 """ Extract benchmark files based on the ones used by Massimo Michelutti """
 
-import os 
+import os
 import json
 import shutil
 
 from typing import List
 
+
 DATA_TARGET_OUTPUT_FOLDER = "output_tbdd_total_new"
 DATA_ROOT_PATHS = [
-    os.path.join("data/michelutti_tdds/ldd_randgen", DATA_TARGET_OUTPUT_FOLDER),
+    os.path.join("data/michelutti_tdds/ldd_randgen", DATA_TARGET_OUTPUT_FOLDER),  # noqa: E501
     os.path.join("data/michelutti_tdds/randgen", DATA_TARGET_OUTPUT_FOLDER),
 ]
 BENCHMARK_OUTPUT_PATH = "data/benchmark/"
 TIMEOUT_KEY = "timeout"
 ALL_SMT_COMPUTATION_TIME_KEY = "All-SMT computation time"
+
 
 def is_candidate_benchmark(json_file_path: str) -> bool:
     """
@@ -43,6 +45,7 @@ def is_candidate_benchmark(json_file_path: str) -> bool:
 
     return True
 
+
 def retrieve_smt2_path(json_file_path: str) -> str:
     """
     Map a JSON result path back to its original `.smt2` file.
@@ -62,11 +65,12 @@ def retrieve_smt2_path(json_file_path: str) -> str:
 
     smt2_file_path = (
         json_file_path
-            .replace(DATA_TARGET_OUTPUT_FOLDER, "data")
-            .replace(".json", ".smt2")
+        .replace(DATA_TARGET_OUTPUT_FOLDER, "data")
+        .replace(".json", ".smt2")
     )
 
     return smt2_file_path
+
 
 def get_candidate_benchmark_files() -> List[str]:
     """
@@ -80,10 +84,11 @@ def get_candidate_benchmark_files() -> List[str]:
             for file in files:
                 json_path = os.path.join(root, file)
                 if is_candidate_benchmark(json_path):
-                        smt2_file_path = retrieve_smt2_path(json_path)
-                        candidates.append(smt2_file_path)
+                    smt2_file_path = retrieve_smt2_path(json_path)
+                    candidates.append(smt2_file_path)
 
     return candidates
+
 
 def copy_candidates_to_benchmark(candidates: List[str]) -> None:
     """
@@ -91,10 +96,13 @@ def copy_candidates_to_benchmark(candidates: List[str]) -> None:
     """
     for candidate in candidates:
         target_dst_path = os.path.join(
-            BENCHMARK_OUTPUT_PATH, candidate.replace("data/michelutti_tdds/", "")
+            BENCHMARK_OUTPUT_PATH, candidate.replace(
+                "data/michelutti_tdds/", ""
+            )
         )
         os.makedirs(os.path.dirname(target_dst_path), exist_ok=True)
         shutil.copy(candidate, target_dst_path)
+
 
 if __name__ == "__main__":
     print("Looking for candidate files...")

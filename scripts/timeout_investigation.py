@@ -1,9 +1,8 @@
 import os 
 import json
-import shutil
 from collections import defaultdict
 
-from typing import List, Dict
+from typing import Dict
 
 DATA_ROOT_PATHS = [
     "data/michelutti_tdds/ldd_randgen",

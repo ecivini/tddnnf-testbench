@@ -22,29 +22,61 @@ ALLOWED_TASKS = [
 
 ###############################################################################
 
-"""
-Reads and loads the current configuration from the default configuration file.
-"""
+
 def get_config():
+    """
+    Reads and loads the current configuration from the default
+    configuration file.
+    """
     config = None
 
     with open(CONFIG_FILE, "r") as config_file:
         config = yaml.safe_load(config_file)
-        
+
     return config
 
-###############################################################################
 
 def set_memory_limit(memory_limit: int):
+    """
+    Sets the memory limit for a subprocess.
+    The memory limit is given in MB.
+    """
     _, hard = resource.getrlimit(resource.RLIMIT_AS)
     memory_limit_bytes = memory_limit * 1024 * 1024
     resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, hard))
 
+
 def check_ext(file_path: str, ext: str = ".smt2") -> bool:
+    """
+    Checks if the given file has the specified extension.
+    """
     _, fext = os.path.splitext(file_path)
     return fext == ext
 
-def get_test_cases(paths: list[str], already_computed: list[str]) -> Generator[str, None, None]:
+
+def computed_selector_for_compilation(files: list[str], task: str) -> bool:
+    """
+    Selector function to determine if a benchmark has already been computed
+    for compilation task. A benchmark is considered computed if there is a
+    file named "logs.json" in its result directory.
+    """
+    if task != TASK_COMPILE:
+        return False
+
+    return "logs.json" in files
+
+
+###############################################################################
+
+
+def get_test_cases(
+    paths: list[str],
+    already_computed: list[str]
+) -> Generator[str, None, None]:
+    """
+    Yields all test cases found in the given paths that have not been
+    already computed.
+    """
     for path in paths:
         if os.path.isfile(path):
             if check_ext(path) and path not in already_computed:
@@ -61,15 +93,6 @@ def get_test_cases(paths: list[str], already_computed: list[str]) -> Generator[s
                 else:
                     print("[-] Skipping test case:", test_case)
 
-def _computed_selector_for_compilation(files: list[str], task: str) -> bool:
-    """
-    Selector function to determine if a benchmark has already been computed for compilation task.
-    A benchmark is considered computed if there is a file named "logs.json" in its result directory.
-    """
-    if task != TASK_COMPILE:
-        return False
-
-    return "logs.json" in files
 
 def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
     """
@@ -77,13 +100,14 @@ def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
     """
     computed = []
     for root, _, files in os.walk(base_path):
-        if _computed_selector_for_compilation(files, task):
+        if computed_selector_for_compilation(files, task):
             # Remove the result path and add .smt2 extension
             benchmark_path = root[len(base_path)+1:] + ".smt2"
             computed.append(benchmark_path)
             print(benchmark_path, "already computed, skipping...")
 
     return computed
+
 
 def compile_task(data: dict) -> tuple:
     """
@@ -94,7 +118,10 @@ def compile_task(data: dict) -> tuple:
     error_message = ""
     try:
         print(f"[+] Compiling formula {data["formula_path"]}...")
-        command = f"python3 scripts/tasks/compile_task.py {data["formula_path"]} {data["base_output_path"]} {data["allsmt_processes"]}"
+        command = (
+            f"python3 scripts/tasks/compile_task.py {data["formula_path"]} "
+            f"{data["base_output_path"]} {data["allsmt_processes"]}"
+        )
         command = command.split(" ")
         result = subprocess.run(
             command,
@@ -105,7 +132,7 @@ def compile_task(data: dict) -> tuple:
         )
         if result.returncode != 0:
             print(
-                f"[-] Error during compilation of {data['formula_path']}:", 
+                f"[-] Error during compilation of {data['formula_path']}:",
                 result.stderr.decode("utf-8")
             )
             compilation_succeeded = False
@@ -115,16 +142,22 @@ def compile_task(data: dict) -> tuple:
         compilation_succeeded = False
         error_message = "timeout"
     except Exception as e:
-        print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
+        print(
+            f"[-] Exception during compilation of {data['formula_path']}: {e}"
+        )
         compilation_succeeded = False
         error_message = str(e)
 
     return compilation_succeeded, data["formula_path"], error_message
 
+
 def main():
 
     if len(sys.argv) != 3 or sys.argv[1] not in ALLOWED_TASKS:
-        print("Usage: python3 scripts/benchmark_controller.py <compile|query> <test_name>")
+        print(
+            "Usage: python3 scripts/benchmark_controller.py "
+            "<compile|query> <test_name>"
+        )
         sys.exit(1)
     selected_task = sys.argv[1]
     test_name = sys.argv[2]
@@ -138,7 +171,9 @@ def main():
 
     output_base_path = os.path.join(base_path, test_name)
 
-    already_computed = get_already_computed_benchmarks(output_base_path, selected_task)
+    already_computed = get_already_computed_benchmarks(
+        output_base_path, selected_task
+    )
 
     processes = int(config["processes"])
     allsmt_processes = int(config["allsmt_processes"])
@@ -146,7 +181,8 @@ def main():
     # Run tests
     datas = []
     for test_case in get_test_cases(config["benchmarks"], already_computed):
-        output_path = os.path.join(output_base_path, test_case)[:-5] # remove .smt2
+        # remove .smt2
+        output_path = os.path.join(output_base_path, test_case)[:-5]
         data = {
             "timeout": int(config["timeout"]),
             "memory_limit": config["memory"],
@@ -168,9 +204,9 @@ def main():
     start_ts = time.time()
     errored_cases = {}
     with Pool(processes=processes) as pool:
-        for succeeded, test_case, error_message in pool.imap_unordered(task_fn, datas):
+        for succeeded, test_case, error in pool.imap_unordered(task_fn, datas):
             if not succeeded:
-                errored_cases[test_case] = error_message
+                errored_cases[test_case] = error
 
     if errored_cases:
         errors_file_path = os.path.join(output_base_path, "errors.json")
@@ -180,7 +216,9 @@ def main():
     total_time = time.time() - start_ts
     print(f"[+] Benchmark completed in {total_time:.2f} seconds")
 
+
 ###############################################################################
+
 
 if __name__ == "__main__":
     main()
