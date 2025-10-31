@@ -17,7 +17,7 @@ TIMEOUT_KEY = "timeout"
 ALL_SMT_COMPUTATION_TIME_KEY = "All-SMT computation time"
 
 
-def is_candidate_benchmark(json_file_path: str) -> bool:
+def is_candidate_benchmark(json_file_path: str) -> tuple[bool, bool]:
     """
     Return True if the given JSON result file should be included as a
     benchmark candidate.
@@ -28,22 +28,25 @@ def is_candidate_benchmark(json_file_path: str) -> bool:
         excluded);
     - the JSON contains the `ALL_SMT_COMPUTATION_TIME_KEY` which indicates
         the test was executed successfully.
+
+    Returns:
+        A tuple (is_candidate: bool, is_timeout: bool)
     """
     if not json_file_path.endswith(".json"):
-        return False
+        return False, False
 
     with open(json_file_path, "r") as f:
         data = json.load(f)
 
     if TIMEOUT_KEY in data:
         print("Skipping timed out:", json_file_path)
-        return False
+        return False, True
 
     if ALL_SMT_COMPUTATION_TIME_KEY not in data:
         print("Skipping unrecognized json:", json_file_path)
-        return False
+        return False, False
 
-    return True
+    return True, False
 
 
 def retrieve_smt2_path(json_file_path: str) -> str:
@@ -72,32 +75,36 @@ def retrieve_smt2_path(json_file_path: str) -> str:
     return smt2_file_path
 
 
-def get_candidate_benchmark_files() -> List[str]:
+def get_candidate_benchmark_files() -> tuple[List[str], List[str]]:
     """
     Walk the output directories of the previous tests and collect `.smt2`
     file paths for JSON results that pass the candidate filter.
     """
     candidates: List[str] = []
+    timeouts: List[str] = []
 
     for starting_dir in DATA_ROOT_PATHS:
         for root, _, files in os.walk(starting_dir):
             for file in files:
                 json_path = os.path.join(root, file)
-                if is_candidate_benchmark(json_path):
-                    smt2_file_path = retrieve_smt2_path(json_path)
+                is_candidate, is_timeout = is_candidate_benchmark(json_path)
+                smt2_file_path = retrieve_smt2_path(json_path)
+                if is_candidate:
                     candidates.append(smt2_file_path)
+                elif is_timeout:
+                    timeouts.append(smt2_file_path)
 
-    return candidates
+    return candidates, timeouts
 
 
-def copy_candidates_to_benchmark(candidates: List[str]) -> None:
+def copy_to_benchmark(files: List[str], target_base: str = "") -> None:
     """
     Copy candidate `.smt2` files into the benchmark output folder.
     """
-    for candidate in candidates:
+    for candidate in files:
         target_dst_path = os.path.join(
             BENCHMARK_OUTPUT_PATH, candidate.replace(
-                "data/michelutti_tdds/", ""
+                "data/michelutti_tdds/", target_base
             )
         )
         os.makedirs(os.path.dirname(target_dst_path), exist_ok=True)
@@ -106,11 +113,12 @@ def copy_candidates_to_benchmark(candidates: List[str]) -> None:
 
 if __name__ == "__main__":
     print("Looking for candidate files...")
-    candidate_benchmark_files = get_candidate_benchmark_files()
+    candidate_benchmark_files, timedout_benchmark_files = get_candidate_benchmark_files()
 
     print(f"Found {len(candidate_benchmark_files)} candidate files.")
     print("Copying to target output directory ...")
 
-    copy_candidates_to_benchmark(candidate_benchmark_files)
+    copy_to_benchmark(candidate_benchmark_files)
+    copy_to_benchmark(timedout_benchmark_files, target_base="timedout/")
 
     print("Done.")
