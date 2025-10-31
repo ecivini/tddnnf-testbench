@@ -18,10 +18,10 @@ TIMES_TO_CONSIDER = [
 
 
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         print(
             "Usage: python3 scripts/tasks/compile_tasks.py <input formula> "
-            "<base output path> <allsmt_processes>"
+            "<base output path> <allsmt_processes> <generate tlemmas only>"
         )
         sys.exit(1)
 
@@ -30,6 +30,7 @@ def main():
         os.makedirs(sys.argv[2])
 
     phi = read_smtlib(sys.argv[1])
+    generate_tlemmas_only = True if sys.argv[4].lower() == "true" else False
 
     logger = {}
 
@@ -39,7 +40,9 @@ def main():
             phi,
             computation_logger=logger,
             base_out_path=sys.argv[2],
-            parallel_allsmt_procs=int(sys.argv[3])
+            parallel_allsmt_procs=int(sys.argv[3]),
+            stop_after_allsmt=generate_tlemmas_only,
+            store_tlemmas=True
         )
     except Exception:
         print(f"[-] Exception during compilation of {sys.argv[1]}")

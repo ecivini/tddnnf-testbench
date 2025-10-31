@@ -13,9 +13,11 @@ import json
 
 CONFIG_FILE = "config.yaml"
 
+TASK_TLEMMAS = "tlemmas"
 TASK_COMPILE = "compile"
 TASK_QUERY = "query"
 ALLOWED_TASKS = [
+    TASK_TLEMMAS,
     TASK_COMPILE,
     TASK_QUERY
 ]
@@ -95,6 +97,7 @@ def get_test_cases(
 
 
 def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
+    # TODO: Adapt this function to different tasks
     """
     Returns a list of already computed benchmarks in the given base path.
     """
@@ -120,7 +123,7 @@ def compile_task(data: dict) -> tuple:
         print(f"[+] Compiling formula {data["formula_path"]}...")
         command = (
             f"python3 scripts/tasks/compile_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["allsmt_processes"]}"
+            f"{data["base_output_path"]} {data["allsmt_processes"]} {data["generate_tlemmas_only"]}"
         )
         command = command.split(" ")
         result = subprocess.run(
@@ -156,7 +159,7 @@ def main():
     if len(sys.argv) != 3 or sys.argv[1] not in ALLOWED_TASKS:
         print(
             "Usage: python3 scripts/benchmark_controller.py "
-            "<compile|query> <test_name>"
+            "<tlemmas|compile|query> <test_name>"
         )
         sys.exit(1)
     selected_task = sys.argv[1]
@@ -188,12 +191,13 @@ def main():
             "memory_limit": config["memory"],
             "formula_path": test_case,
             "base_output_path": output_path,
-            "allsmt_processes": allsmt_processes
+            "allsmt_processes": allsmt_processes,
+            "generate_tlemmas_only": selected_task == TASK_TLEMMAS
         }
         datas.append(data)
 
     task_fn = None
-    if selected_task == TASK_COMPILE:
+    if selected_task in [TASK_COMPILE, TASK_TLEMMAS]:
         task_fn = compile_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
