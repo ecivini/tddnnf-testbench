@@ -4,7 +4,8 @@ import os
 import json
 import shutil
 
-from typing import List
+from typing import List, Dict
+from collections import defaultdict
 
 
 DATA_TARGET_OUTPUT_FOLDER = "output_tbdd_total_new"
@@ -15,6 +16,8 @@ DATA_ROOT_PATHS = [
 BENCHMARK_OUTPUT_PATH = "data/benchmark/"
 TIMEOUT_KEY = "timeout"
 ALL_SMT_COMPUTATION_TIME_KEY = "All-SMT computation time"
+SERVER_NAMES = ["qui", "quo", "qua"]
+TOTAL_SERVERS = len(SERVER_NAMES)
 
 
 def is_candidate_benchmark(json_file_path: str) -> tuple[bool, bool]:
@@ -75,13 +78,14 @@ def retrieve_smt2_path(json_file_path: str) -> str:
     return smt2_file_path
 
 
-def get_candidate_benchmark_files() -> tuple[List[str], List[str]]:
+def get_candidate_benchmark_files() -> tuple[List[str], Dict[str, List[str]]]:
     """
     Walk the output directories of the previous tests and collect `.smt2`
     file paths for JSON results that pass the candidate filter.
     """
     candidates: List[str] = []
-    timeouts: List[str] = []
+    timeouts: Dict[str, List[str]] = defaultdict(list)
+    current_server = 0
 
     for starting_dir in DATA_ROOT_PATHS:
         for root, _, files in os.walk(starting_dir):
@@ -92,7 +96,9 @@ def get_candidate_benchmark_files() -> tuple[List[str], List[str]]:
                 if is_candidate:
                     candidates.append(smt2_file_path)
                 elif is_timeout:
-                    timeouts.append(smt2_file_path)
+                    server = SERVER_NAMES[current_server]
+                    timeouts[server].append(smt2_file_path)
+                    current_server = (current_server + 1) % TOTAL_SERVERS
 
     return candidates, timeouts
 
@@ -119,6 +125,9 @@ if __name__ == "__main__":
     print("Copying to target output directory ...")
 
     copy_to_benchmark(candidate_benchmark_files)
-    copy_to_benchmark(timedout_benchmark_files, target_base="timedout/")
+    for server, files in timedout_benchmark_files.items():
+        print(f"Copying {len(timedout_benchmark_files)} timed out files for server {server}...")
+        target_path = f"timedout/{server}/"
+        copy_to_benchmark(files, target_base=target_path)
 
     print("Done.")
