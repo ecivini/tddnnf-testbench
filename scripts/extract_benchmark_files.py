@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     copy_to_benchmark(candidate_benchmark_files)
     for server, files in timedout_benchmark_files.items():
-        print(f"Copying {len(timedout_benchmark_files)} timed out files for server {server}...")
+        print(f"Copying {len(files)} timed out files for server {server}...")
         target_path = f"timedout/{server}/"
         copy_to_benchmark(files, target_base=target_path)
 
