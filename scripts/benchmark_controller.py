@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Generator, Tuple
 import yaml
 import os
 import sys
@@ -8,6 +8,7 @@ import time
 import subprocess
 import resource
 import json
+import psutil
 
 ###############################################################################
 
@@ -111,6 +112,34 @@ def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
 
     return computed
 
+def run_with_timeout_and_kill_children(
+    command: list[str],
+    timeout: float,
+    memory_limit: int
+) -> Tuple[int, str]:
+    proc = subprocess.Popen(
+        command,
+        preexec_fn=set_memory_limit(memory_limit),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    try:
+        proc.wait(timeout=timeout+2)
+        return proc.returncode, proc.stderr.read().decode("utf-8")
+    except subprocess.TimeoutExpired as e:
+        parent = psutil.Process(proc.pid)
+        for child in parent.children(recursive=True):
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                continue
+        try:
+            parent.kill()
+            parent.wait()
+        except psutil.NoSuchProcess:
+            pass
+
+        raise e
 
 def compile_task(data: dict) -> tuple:
     """
@@ -126,22 +155,22 @@ def compile_task(data: dict) -> tuple:
             f"{data["base_output_path"]} {data["allsmt_processes"]} {data["generate_tlemmas_only"]}"
         )
         command = command.split(" ")
-        result = subprocess.run(
+        return_code, error = run_with_timeout_and_kill_children(
             command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=data["timeout"] + 5,
-            preexec_fn=set_memory_limit(int(data["memory_limit"]))
+            data["timeout"],
+            data["memory_limit"]
         )
-        if result.returncode != 0:
+        if return_code != 0:
             print(
                 f"[-] Error during compilation of {data['formula_path']}:",
-                result.stderr.decode("utf-8")
+                error
             )
             compilation_succeeded = False
-            error_message = result.stderr.decode("utf-8")
+            error_message = error
+        else:
+            print(f"[+] Successfully compiled {data['formula_path']}")
     except subprocess.TimeoutExpired:
-        print(f"[-] Timeout during compilation of {data['formula_path']}")
+        print(f"\t[-] Timeout during compilation of {data['formula_path']}")
         compilation_succeeded = False
         error_message = "timeout"
     except Exception as e:
