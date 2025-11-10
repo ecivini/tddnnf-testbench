@@ -11,13 +11,13 @@ def build_data_path(server: str) -> str:
 DATA_FOLDERS = [
     build_data_path("qui"),
     build_data_path("quo"),
-    # build_data_path("qua"),
+    build_data_path("qua"),
 ]
 
 ERROR_FILES = [
     "data/results/qui_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
     "data/results/quo_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
-    # "data/results/qua_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
+    "data/results/qua_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
 ]
 
 
