@@ -63,7 +63,7 @@ def computed_selector_for_compilation(files: list[str], task: str) -> bool:
     for compilation task. A benchmark is considered computed if there is a
     file named "logs.json" in its result directory.
     """
-    if task != TASK_COMPILE:
+    if task not in [TASK_COMPILE, TASK_TLEMMAS]:
         return False
 
     return "logs.json" in files
