@@ -82,7 +82,8 @@ def get_test_cases(
     """
     for path in paths:
         if os.path.isfile(path):
-            if check_ext(path) and path not in already_computed:
+            name = path.split(os.sep)[-1]
+            if check_ext(path) and name not in already_computed:
                 yield path
             else:
                 print("[-] Skipping test case:", path)
@@ -91,7 +92,7 @@ def get_test_cases(
             for file_path in files:
                 test_case = os.path.join(root, file_path)
 
-                if check_ext(test_case) and test_case not in already_computed:
+                if check_ext(test_case) and file_path not in already_computed:
                     yield test_case
                 else:
                     print("[-] Skipping test case:", test_case)
@@ -106,9 +107,10 @@ def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
     for root, _, files in os.walk(base_path):
         if computed_selector_for_compilation(files, task):
             # Remove the result path and add .smt2 extension
-            benchmark_path = root[len(base_path)+1:] + ".smt2"
-            computed.append(benchmark_path)
-            print(benchmark_path, "already computed, skipping...")
+            problem_path = root.split(os.sep)[-1] + ".smt2"
+            computed.append(problem_path)
+
+    print(f"[+] Found {len(computed)} already computed benchmarks")
 
     return computed
 
