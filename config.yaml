@@ -1,26 +1,26 @@
 # MB of memory per core
-memory: 2048
+memory: 170000
 
 # Maximum allowed solving time per problem in seconds
-timeout: 300
+timeout: 240
 
 # Number of concurrent evaluations running
-processes: 6
+processes: 1
 
 # For compilation tasks, number of concurrent AllSMT processes per task that enumerates
 # total truth assignments
-allsmt_processes: 4
+allsmt_processes: 14
 
 # Benchmarks
 benchmarks: [
   # Base test cases
-  "data/benchmark/randgen/data/problems_b10_r10_d4_m25_s1234",
-  "data/benchmark/randgen/data/problems_b10_r10_d4_m25_s4321",
-  "data/benchmark/randgen/data/problems_b10_r10_d5_m25_s12345",
-  "data/benchmark/randgen/data/problems_b10_r10_d5_m25_s54321",
-  # "data/benchmark/randgen/data/problems_b10_r10_d6_m25_s123456",
-  # "data/benchmark/randgen/data/problems_b10_r10_d6_m25_s654321",
+  "data/benchmark/planning/h3/Painter"
+  # "data/benchmark/ldd_randgen",
+  # "data/benchmark/randgen"
 ] 
+
+# T-Lemmas base path
+tlemmas_dir: "data/results/planning_h3_parallel/planning_h3_1Prob_45Procs"
 
 # Output dir, add a / to the end
 results: "results/"

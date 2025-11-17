@@ -16,11 +16,13 @@ CONFIG_FILE = "config.yaml"
 
 TASK_TLEMMAS = "tlemmas"
 TASK_COMPILE = "compile"
+TASK_TDDNNF = "tddnnfonly"
 TASK_QUERY = "query"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
     TASK_COMPILE,
-    TASK_QUERY
+    TASK_QUERY,
+    TASK_TDDNNF
 ]
 
 ###############################################################################
@@ -96,6 +98,20 @@ def get_test_cases(
                     yield test_case
                 else:
                     print("[-] Skipping test case:", test_case)
+
+
+def get_computed_tlemmas(path: str) -> dict[str, str]:
+    tlemmas = {}
+    for root, _, files in os.walk(path):
+        for file_path in files:
+            tlemma = os.path.join(root, file_path)
+
+            if check_ext(tlemma):
+                key = root.replace(path, "").replace("data/benchmark/", "")
+                tlemmas[key] = tlemma
+            else:
+                print("[-] Skipping tlemma:", tlemma)
+    return tlemmas
 
 
 def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
@@ -185,6 +201,61 @@ def compile_task(data: dict) -> tuple:
     return compilation_succeeded, data["formula_path"], error_message
 
 
+def tddnnf_task(data: dict) -> tuple:
+    """
+    Compiles a given SMT formula using the tddnf_task script.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    if data["tlemmas_path"] is None:
+        return False, data["formula_path"], "Missing tlemmas"
+
+    compilation_succeeded = True
+    error_message = ""
+    try:
+        print(f"[+] Compiling formula {data["formula_path"]}...")
+        command = (
+            f"python3 scripts/tasks/tddnnf_task.py {data["formula_path"]} "
+            f"{data["base_output_path"]} {data["tlemmas_path"]}"
+        )
+        command = command.split(" ")
+        return_code, error = run_with_timeout_and_kill_children(
+            command,
+            data["timeout"],
+            data["memory_limit"]
+        )
+        if return_code != 0:
+            print(
+                f"[-] Error during compilation of {data['formula_path']}:",
+                error
+            )
+            compilation_succeeded = False
+            error_message = error
+        else:
+            print(f"[+] Successfully compiled {data['formula_path']}")
+    except subprocess.TimeoutExpired:
+        print(f"\t[-] Timeout during compilation of {data['formula_path']}")
+        compilation_succeeded = False
+        error_message = "timeout"
+    except Exception as e:
+        print(
+            f"[-] Exception during compilation of {data['formula_path']}: {e}"
+        )
+        compilation_succeeded = False
+        error_message = str(e)
+
+    return compilation_succeeded, data["formula_path"], error_message
+
+
+def find_associated_tlemmas_from_phi(
+    benchmark: str,
+    tlemmas: dict[str, str]
+) -> str | None:
+    for key in tlemmas.keys():
+        if key in benchmark:
+            return tlemmas[key]
+    return None
+
+
 def main():
 
     if len(sys.argv) != 3 or sys.argv[1] not in ALLOWED_TASKS:
@@ -204,6 +275,8 @@ def main():
         os.makedirs(base_path)
 
     output_base_path = os.path.join(base_path, test_name)
+    if not os.path.exists(output_base_path):
+        os.makedirs(output_base_path)
 
     already_computed = get_already_computed_benchmarks(
         output_base_path, selected_task
@@ -211,6 +284,11 @@ def main():
 
     processes = int(config["processes"])
     allsmt_processes = int(config["allsmt_processes"])
+
+    computed_tlemmas = {}
+    if selected_task == TASK_TDDNNF:
+        tlemmas_base_path = config["tlemmas_dir"]
+        computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
 
     # Run tests
     datas = []
@@ -223,13 +301,16 @@ def main():
             "formula_path": test_case,
             "base_output_path": output_path,
             "allsmt_processes": allsmt_processes,
-            "generate_tlemmas_only": selected_task == TASK_TLEMMAS
+            "generate_tlemmas_only": selected_task == TASK_TLEMMAS,
+            "tlemmas_path": find_associated_tlemmas_from_phi(test_case, computed_tlemmas)
         }
         datas.append(data)
 
     task_fn = None
     if selected_task in [TASK_COMPILE, TASK_TLEMMAS]:
         task_fn = compile_task
+    elif selected_task == TASK_TDDNNF:
+        task_fn = tddnnf_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
         sys.exit(1)
