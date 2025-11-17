@@ -3,9 +3,11 @@
 import os
 import json
 import shutil
+import random
 
 from typing import List, Dict
 from collections import defaultdict
+from itertools import batched
 
 
 DATA_TARGET_OUTPUT_FOLDER = "output_tbdd_total_new"
@@ -124,7 +126,20 @@ if __name__ == "__main__":
     print(f"Found {len(candidate_benchmark_files)} candidate files.")
     print("Copying to target output directory ...")
 
-    copy_to_benchmark(candidate_benchmark_files)
+    # Uncomment this to split the benchmark files into each server too
+    total_files = candidate_benchmark_files 
+    for server in SERVER_NAMES:
+        total_files += timedout_benchmark_files[server]
+    random.shuffle(total_files)
+
+    batch_size = (len(total_files) // TOTAL_SERVERS) + 1
+    print(f"Distributing files in batches of {batch_size}...")
+    for i, batch in enumerate(batched(total_files, batch_size)):
+        base_path = f"{SERVER_NAMES[i]}/"
+        copy_to_benchmark(list(batch), target_base=base_path)
+
+    # copy_to_benchmark(candidate_benchmark_files)
+
     for server, files in timedout_benchmark_files.items():
         print(f"Copying {len(files)} timed out files for server {server}...")
         target_path = f"timedout/{server}/"
