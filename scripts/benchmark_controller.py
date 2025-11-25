@@ -15,14 +15,20 @@ import psutil
 CONFIG_FILE = "config.yaml"
 
 TASK_TLEMMAS = "tlemmas"
+TASK_TLEMMAS_WITH_PROJECTION = "tlemmas_proj"
 TASK_COMPILE = "compile"
 TASK_TDDNNF = "tddnnfonly"
 TASK_QUERY = "query"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
+    TASK_TLEMMAS_WITH_PROJECTION,
     TASK_COMPILE,
     TASK_QUERY,
     TASK_TDDNNF
+]
+TLEMMAS_RELATED_TASKS = [
+    TASK_TLEMMAS,
+    TASK_TLEMMAS_WITH_PROJECTION
 ]
 
 ###############################################################################
@@ -107,7 +113,10 @@ def get_computed_tlemmas(path: str) -> dict[str, str]:
             tlemma = os.path.join(root, file_path)
 
             if check_ext(tlemma):
-                key = root.replace(path, "").replace("data/benchmark/", "")
+                key = root.replace(path, "") \
+                    .replace("data/benchmark/", "") \
+                    .replace("/randgen", "") \
+                    .replace("/ldd_randgen", "")
                 tlemmas[key] = tlemma
             else:
                 print("[-] Skipping tlemma:", tlemma)
@@ -170,8 +179,10 @@ def compile_task(data: dict) -> tuple:
         print(f"[+] Compiling formula {data["formula_path"]}...")
         command = (
             f"python3 scripts/tasks/compile_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["allsmt_processes"]} {data["generate_tlemmas_only"]}"
+            f"{data["base_output_path"]} {data["allsmt_processes"]} {data["generate_tlemmas_only"]} "
+            f"{data["solver"]} {data["project_atoms"]}"
         )
+        print(command)
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
             command,
@@ -257,17 +268,21 @@ def find_associated_tlemmas_from_phi(
 
 
 def main():
-
-    if len(sys.argv) != 3 or sys.argv[1] not in ALLOWED_TASKS:
+    if len(sys.argv) < 3 or sys.argv[1] not in ALLOWED_TASKS:
         print(
             "Usage: python3 scripts/benchmark_controller.py "
-            "<tlemmas|compile|query> <test_name>"
+            "<tlemmas|compile|query> <test_name> <optional:sequential|parallel>"
         )
         sys.exit(1)
     selected_task = sys.argv[1]
     test_name = sys.argv[2]
 
     config = get_config()
+    
+    # Get solver type
+    solver = "parallel" # parallel by default
+    if len(sys.argv) >= 4 and sys.argv[3].lower().strip() == "sequential":
+        solver = "sequential"
 
     # Create output file
     base_path = config["results"]
@@ -301,13 +316,15 @@ def main():
             "formula_path": test_case,
             "base_output_path": output_path,
             "allsmt_processes": allsmt_processes,
-            "generate_tlemmas_only": selected_task == TASK_TLEMMAS,
-            "tlemmas_path": find_associated_tlemmas_from_phi(test_case, computed_tlemmas)
+            "generate_tlemmas_only": selected_task in TLEMMAS_RELATED_TASKS,
+            "tlemmas_path": find_associated_tlemmas_from_phi(test_case, computed_tlemmas),
+            "project_atoms": selected_task == TASK_TLEMMAS_WITH_PROJECTION,
+            "solver": solver
         }
         datas.append(data)
 
     task_fn = None
-    if selected_task in [TASK_COMPILE, TASK_TLEMMAS]:
+    if selected_task in [TASK_COMPILE, TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]:
         task_fn = compile_task
     elif selected_task == TASK_TDDNNF:
         task_fn = tddnnf_task

@@ -1,4 +1,6 @@
 from theorydd.tddnnf.theory_ddnnf import TheoryDDNNF
+from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
+from theorydd.solvers.mathsat_partial_extended import MathSATExtendedPartialEnumerator
 from pysmt.shortcuts import read_smtlib
 
 import sys
@@ -18,10 +20,11 @@ TIMES_TO_CONSIDER = [
 
 
 def main():
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 7:
         print(
             "Usage: python3 scripts/tasks/compile_tasks.py <input formula> "
-            "<base output path> <allsmt_processes> <generate tlemmas only>"
+            "<base output path> <allsmt_processes> <generate tlemmas only> "
+            "<solver> <project t-atoms>"
         )
         sys.exit(1)
 
@@ -31,6 +34,21 @@ def main():
 
     phi = read_smtlib(sys.argv[1])
     generate_tlemmas_only = True if sys.argv[4].lower() == "true" else False
+
+    # Create the appropriate solver
+    solver_name = sys.argv[5].lower().strip()
+    if solver_name == "sequential":
+        solver = MathSATTotalEnumerator()
+    elif solver_name == "parallel":
+        solver = MathSATExtendedPartialEnumerator()
+    else:
+        raise ValueError("Invalid solver")
+    
+    # Compute the atoms to project on
+    atoms = (
+        solver.get_theory_atoms(phi) if sys.argv[6].lower() == "true"
+        else phi.get_atoms()
+    )
 
     logger = {}
 
@@ -42,7 +60,9 @@ def main():
             base_out_path=sys.argv[2],
             parallel_allsmt_procs=int(sys.argv[3]),
             stop_after_allsmt=generate_tlemmas_only,
-            store_tlemmas=True
+            store_tlemmas=True,
+            solver=solver,
+            atoms=atoms
         )
     except Exception:
         print(f"[-] Exception during compilation of {sys.argv[1]}")
