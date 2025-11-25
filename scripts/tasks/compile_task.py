@@ -1,6 +1,7 @@
 from theorydd.tddnnf.theory_ddnnf import TheoryDDNNF
 from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
 from theorydd.solvers.mathsat_partial_extended import MathSATExtendedPartialEnumerator
+from theorydd.formula import get_theory_atoms
 from pysmt.shortcuts import read_smtlib
 
 import sys
@@ -46,9 +47,12 @@ def main():
     
     # Compute the atoms to project on
     atoms = (
-        solver.get_theory_atoms(phi) if sys.argv[6].lower() == "true"
+        get_theory_atoms(phi) if sys.argv[6].lower() == "true"
         else phi.get_atoms()
     )
+
+    print("Solver", solver)
+    print("Project t-atoms", sys.argv[6].lower() == "true")
 
     logger = {}
 
