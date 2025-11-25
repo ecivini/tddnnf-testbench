@@ -182,7 +182,6 @@ def compile_task(data: dict) -> tuple:
             f"{data["base_output_path"]} {data["allsmt_processes"]} {data["generate_tlemmas_only"]} "
             f"{data["solver"]} {data["project_atoms"]}"
         )
-        print(command)
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
             command,
