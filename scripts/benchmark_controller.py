@@ -24,12 +24,9 @@ ALLOWED_TASKS = [
     TASK_TLEMMAS_WITH_PROJECTION,
     TASK_COMPILE,
     TASK_QUERY,
-    TASK_TDDNNF
+    TASK_TDDNNF,
 ]
-TLEMMAS_RELATED_TASKS = [
-    TASK_TLEMMAS,
-    TASK_TLEMMAS_WITH_PROJECTION
-]
+TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
 
 ###############################################################################
 
@@ -81,8 +78,7 @@ def computed_selector_for_compilation(files: list[str], task: str) -> bool:
 
 
 def get_test_cases(
-    paths: list[str],
-    already_computed: list[str]
+    paths: list[str], already_computed: list[str]
 ) -> Generator[str, None, None]:
     """
     Yields all test cases found in the given paths that have not been
@@ -113,10 +109,12 @@ def get_computed_tlemmas(path: str) -> dict[str, str]:
             tlemma = os.path.join(root, file_path)
 
             if check_ext(tlemma):
-                key = root.replace(path, "") \
-                    .replace("data/benchmark/", "") \
-                    .replace("/randgen", "") \
+                key = (
+                    root.replace(path, "")
+                    .replace("data/benchmark/", "")
+                    .replace("/randgen", "")
                     .replace("/ldd_randgen", "")
+                )
                 tlemmas[key] = tlemma
             else:
                 print("[-] Skipping tlemma:", tlemma)
@@ -139,19 +137,18 @@ def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
 
     return computed
 
+
 def run_with_timeout_and_kill_children(
-    command: list[str],
-    timeout: float,
-    memory_limit: int
+    command: list[str], timeout: float, memory_limit: int
 ) -> Tuple[int, str]:
     proc = subprocess.Popen(
         command,
         preexec_fn=set_memory_limit(memory_limit),
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
     )
     try:
-        proc.wait(timeout=timeout+2)
+        proc.wait(timeout=timeout + 2)
         return proc.returncode, proc.stderr.read().decode("utf-8")
     except subprocess.TimeoutExpired as e:
         parent = psutil.Process(proc.pid)
@@ -167,6 +164,7 @@ def run_with_timeout_and_kill_children(
             pass
 
         raise e
+
 
 def compile_task(data: dict) -> tuple:
     """
@@ -184,15 +182,10 @@ def compile_task(data: dict) -> tuple:
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
-            command,
-            data["timeout"],
-            data["memory_limit"]
+            command, data["timeout"], data["memory_limit"]
         )
         if return_code != 0:
-            print(
-                f"[-] Error during compilation of {data['formula_path']}:",
-                error
-            )
+            print(f"[-] Error during compilation of {data['formula_path']}:", error)
             compilation_succeeded = False
             error_message = error
         else:
@@ -202,9 +195,7 @@ def compile_task(data: dict) -> tuple:
         compilation_succeeded = False
         error_message = "timeout"
     except Exception as e:
-        print(
-            f"[-] Exception during compilation of {data['formula_path']}: {e}"
-        )
+        print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
         compilation_succeeded = False
         error_message = str(e)
 
@@ -229,15 +220,10 @@ def tddnnf_task(data: dict) -> tuple:
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
-            command,
-            data["timeout"],
-            data["memory_limit"]
+            command, data["timeout"], data["memory_limit"]
         )
         if return_code != 0:
-            print(
-                f"[-] Error during compilation of {data['formula_path']}:",
-                error
-            )
+            print(f"[-] Error during compilation of {data['formula_path']}:", error)
             compilation_succeeded = False
             error_message = error
         else:
@@ -247,9 +233,7 @@ def tddnnf_task(data: dict) -> tuple:
         compilation_succeeded = False
         error_message = "timeout"
     except Exception as e:
-        print(
-            f"[-] Exception during compilation of {data['formula_path']}: {e}"
-        )
+        print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
         compilation_succeeded = False
         error_message = str(e)
 
@@ -257,8 +241,7 @@ def tddnnf_task(data: dict) -> tuple:
 
 
 def find_associated_tlemmas_from_phi(
-    benchmark: str,
-    tlemmas: dict[str, str]
+    benchmark: str, tlemmas: dict[str, str]
 ) -> str | None:
     for key in tlemmas.keys():
         if key in benchmark:
@@ -277,9 +260,9 @@ def main():
     test_name = sys.argv[2]
 
     config = get_config()
-    
+
     # Get solver type
-    solver = "parallel" # parallel by default
+    solver = "parallel"  # parallel by default
     if len(sys.argv) >= 4 and sys.argv[3].lower().strip() == "sequential":
         solver = "sequential"
 
@@ -292,9 +275,7 @@ def main():
     if not os.path.exists(output_base_path):
         os.makedirs(output_base_path)
 
-    already_computed = get_already_computed_benchmarks(
-        output_base_path, selected_task
-    )
+    already_computed = get_already_computed_benchmarks(output_base_path, selected_task)
 
     processes = int(config["processes"])
     allsmt_processes = int(config["allsmt_processes"])
@@ -316,9 +297,11 @@ def main():
             "base_output_path": output_path,
             "allsmt_processes": allsmt_processes,
             "generate_tlemmas_only": selected_task in TLEMMAS_RELATED_TASKS,
-            "tlemmas_path": find_associated_tlemmas_from_phi(test_case, computed_tlemmas),
+            "tlemmas_path": find_associated_tlemmas_from_phi(
+                test_case, computed_tlemmas
+            ),
             "project_atoms": selected_task == TASK_TLEMMAS_WITH_PROJECTION,
-            "solver": solver
+            "solver": solver,
         }
         datas.append(data)
 
