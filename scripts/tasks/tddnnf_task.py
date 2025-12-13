@@ -1,5 +1,6 @@
 from theorydd.tddnnf.theory_ddnnf import TheoryDDNNF
 from pysmt.shortcuts import read_smtlib
+from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
 
 import sys
 import os
@@ -35,6 +36,7 @@ def main():
         sys.exit(1)
 
     phi = read_smtlib(sys.argv[1])
+    solver = MathSATTotalEnumerator()
 
     logger = {}
     start = time.time()
@@ -46,7 +48,8 @@ def main():
             stop_after_allsmt=False,
             store_tlemmas=False,
             load_lemmas=tlemmas_path,
-            sat_result=True
+            sat_result=True,
+            solver=solver,
         )
     except Exception as e:
         print(f"[-] Exception during compilation of {sys.argv[1]}")
