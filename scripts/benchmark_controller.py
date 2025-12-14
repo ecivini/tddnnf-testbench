@@ -19,12 +19,14 @@ TASK_TLEMMAS_WITH_PROJECTION = "tlemmas_proj"
 TASK_COMPILE = "compile"
 TASK_TDDNNF = "tddnnfonly"
 TASK_QUERY = "query"
+TASK_TBDD = "tbdd"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
     TASK_TLEMMAS_WITH_PROJECTION,
     TASK_COMPILE,
     TASK_QUERY,
     TASK_TDDNNF,
+    TASK_TBDD,
 ]
 TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
 
@@ -240,6 +242,44 @@ def tddnnf_task(data: dict) -> tuple:
     return compilation_succeeded, data["formula_path"], error_message
 
 
+def tbdd_task(data: dict) -> tuple:
+    """
+    Compiles a given SMT formula using the tbdd_task script.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    if data["tlemmas_path"] is None:
+        return False, data["formula_path"], "Missing tlemmas"
+
+    compilation_succeeded = True
+    error_message = ""
+    try:
+        print(f"[+] Compiling TBDD of {data["formula_path"]}...")
+        command = (
+            f"python3 scripts/tasks/tbdd_task.py {data["formula_path"]} "
+            f"{data["base_output_path"]} {data["tlemmas_path"]}"
+        )
+        command = command.split(" ")
+        return_code, error = run_with_timeout_and_kill_children(
+            command, data["timeout"], data["memory_limit"]
+        )
+        if return_code != 0:
+            print(f"[-] Error during compilation of {data['formula_path']}:", error)
+            compilation_succeeded = False
+            error_message = error
+        else:
+            print(f"[+] Successfully compiled {data['formula_path']}")
+    except subprocess.TimeoutExpired:
+        print(f"\t[-] Timeout during compilation of {data['formula_path']}")
+        compilation_succeeded = False
+        error_message = "timeout"
+    except Exception as e:
+        print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
+        compilation_succeeded = False
+        error_message = str(e)
+
+    return compilation_succeeded, data["formula_path"], error_message
+
+
 def find_associated_tlemmas_from_phi(
     benchmark: str, tlemmas: dict[str, str]
 ) -> str | None:
@@ -281,7 +321,7 @@ def main():
     allsmt_processes = int(config["allsmt_processes"])
 
     computed_tlemmas = {}
-    if selected_task == TASK_TDDNNF:
+    if selected_task in [TASK_TDDNNF, TASK_TBDD]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
 
@@ -310,6 +350,8 @@ def main():
         task_fn = compile_task
     elif selected_task == TASK_TDDNNF:
         task_fn = tddnnf_task
+    elif selected_task == TASK_TBDD:
+        task_fn = tbdd_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
         sys.exit(1)
