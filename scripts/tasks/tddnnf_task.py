@@ -21,7 +21,7 @@ TIMES_TO_CONSIDER = [
 def main():
     if len(sys.argv) != 4:
         print(
-            "Usage: python3 scripts/tasks/compile_tasks.py <input formula> "
+            "Usage: python3 scripts/tasks/compile_task.py <input formula> "
             "<base output path> <tlemmas path>"
         )
         sys.exit(1)
