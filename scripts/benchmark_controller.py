@@ -20,6 +20,7 @@ TASK_COMPILE = "compile"
 TASK_TDDNNF = "tddnnfonly"
 TASK_QUERY = "query"
 TASK_TBDD = "tbdd"
+TASK_QUERY_MC = "query_mc"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
     TASK_TLEMMAS_WITH_PROJECTION,
@@ -27,8 +28,19 @@ ALLOWED_TASKS = [
     TASK_QUERY,
     TASK_TDDNNF,
     TASK_TBDD,
+    TASK_QUERY_MC,
 ]
 TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
+
+TBDDS_RESULTS_BASE_PATHS = [
+    "data/michelutti_tdds/ldd_randgen/output_tbdd_total_new",
+    "data/michelutti_tdds/randgen/output_tbdd_total_new",
+]
+
+TSDDS_RESULTS_BASE_PATHS = [
+    "data/michelutti_tdds/ldd_randgen/output_tsdd_total_new",
+    "data/michelutti_tdds/randgen/output_tsdd_total_new",
+]
 
 ###############################################################################
 
@@ -121,6 +133,44 @@ def get_computed_tlemmas(path: str) -> dict[str, str]:
             else:
                 print("[-] Skipping tlemma:", tlemma)
     return tlemmas
+
+
+def get_computed_dds(path: str) -> dict[str, str]:
+    dds = {}
+    for root, _, files in os.walk(path):
+        for file_path in files:
+            file_path = os.path.join(root, file_path)
+
+            if file_path.endswith("abstraction.json"):
+                key = (
+                    root.replace(path, "")
+                    .replace("data/benchmark/", "")
+                    .replace("/randgen", "")
+                    .replace("/ldd_randgen", "")
+                    .replace("_tsdd", "")
+                    .replace("_tbdd", "")
+                )
+                dds[key] = os.path.dirname(file_path)
+            # else:
+            #     print("[-] Skipping dd file:", file_path)
+    return dds
+
+
+def get_computed_nnfs(path: str) -> dict[str, str]:
+    nnfs = {}
+    for root, _, files in os.walk(path):
+        for file_path in files:
+            file_path = os.path.join(root, file_path)
+
+            if file_path.endswith("compilation_output.nnf"):
+                key = (
+                    root.replace(path, "")
+                    .replace("data/benchmark/", "")
+                    .replace("/randgen", "")
+                    .replace("/ldd_randgen", "")
+                )
+                nnfs[key] = file_path
+    return nnfs
 
 
 def get_already_computed_benchmarks(base_path: str, task: str) -> list[str]:
@@ -280,12 +330,66 @@ def tbdd_task(data: dict) -> tuple:
     return compilation_succeeded, data["formula_path"], error_message
 
 
-def find_associated_tlemmas_from_phi(
-    benchmark: str, tlemmas: dict[str, str]
+def query_mc_task(data: dict) -> tuple:
+    """
+    Run MC queries on all inputs for plain SMT, d-DNNF, BDD and SDD.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    if data["tlemmas_path"] is None:
+        return False, data["formula_path"], "Missing tlemmas"
+
+    if data["bdd_path"] is None:
+        data["bdd_path"] = "none"
+
+    if data["sdd_path"] is None:
+        data["sdd_path"] = "none"
+
+    if data["nnf_path"] is None:
+        data["nnf_path"] = "none"
+
+    compilation_succeeded = True
+    error_message = ""
+    try:
+        print(f"[+] [MC] Querying formula {data["formula_path"]}...")
+        command = (
+            f"python3 scripts/tasks/query_mc_task.py {data["formula_path"]} "
+            f"{data["base_output_path"]} {data["nnf_path"]} {data["tlemmas_path"]} "
+            f"{data["bdd_path"]} {data["sdd_path"]}"
+        )
+        command = command.split(" ")
+        return_code, error = run_with_timeout_and_kill_children(
+            command, data["timeout"], data["memory_limit"]
+        )
+        if return_code != 0:
+            print(f"[-] Error during compilation of {data['formula_path']}:", error)
+            compilation_succeeded = False
+            error_message = error
+        else:
+            print(f"[+] Successfully compiled {data['formula_path']}")
+    except subprocess.TimeoutExpired:
+        print(f"\t[-] Timeout during compilation of {data['formula_path']}")
+        compilation_succeeded = False
+        error_message = "timeout"
+    except Exception as e:
+        print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
+        compilation_succeeded = False
+        error_message = str(e)
+
+    return compilation_succeeded, data["formula_path"], error_message
+
+
+def find_associated(
+    benchmark: str, map: dict[str, str], for_nnf: bool = False
 ) -> str | None:
-    for key in tlemmas.keys():
-        if key in benchmark:
-            return tlemmas[key]
+    if for_nnf:
+        for key in map.keys():
+            pieces = key.split("/")
+            if pieces[-1] in benchmark:
+                return map[key]
+    else:
+        for key in map.keys():
+            if key in benchmark:
+                return map[key]
     return None
 
 
@@ -321,9 +425,24 @@ def main():
     allsmt_processes = int(config["allsmt_processes"])
 
     computed_tlemmas = {}
-    if selected_task in [TASK_TDDNNF, TASK_TBDD]:
+    computed_bdds = {}
+    computed_sdds = {}
+    computed_nnfs = {}
+    if selected_task in [TASK_TDDNNF, TASK_TBDD, TASK_QUERY_MC]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
+
+        if "tddnnf_dir" not in config:
+            raise RuntimeError("Missing tddnnf_dir in config.yaml")
+
+        tddnnf_base_path = config["tddnnf_dir"]
+        computed_nnfs = get_computed_nnfs(tddnnf_base_path)
+
+        for base_path in TBDDS_RESULTS_BASE_PATHS:
+            computed_bdds.update(get_computed_dds(base_path))
+
+        for base_path in TSDDS_RESULTS_BASE_PATHS:
+            computed_sdds.update(get_computed_dds(base_path))
 
     # Run tests
     datas = []
@@ -337,11 +456,12 @@ def main():
             "base_output_path": output_path,
             "allsmt_processes": allsmt_processes,
             "generate_tlemmas_only": selected_task in TLEMMAS_RELATED_TASKS,
-            "tlemmas_path": find_associated_tlemmas_from_phi(
-                test_case, computed_tlemmas
-            ),
+            "tlemmas_path": find_associated(test_case, computed_tlemmas),
             "project_atoms": selected_task == TASK_TLEMMAS_WITH_PROJECTION,
             "solver": solver,
+            "nnf_path": find_associated(test_case, computed_nnfs, for_nnf=True),
+            "bdd_path": find_associated(test_case, computed_bdds, for_nnf=True),
+            "sdd_path": find_associated(test_case, computed_sdds, for_nnf=True),
         }
         datas.append(data)
 
@@ -352,6 +472,8 @@ def main():
         task_fn = tddnnf_task
     elif selected_task == TASK_TBDD:
         task_fn = tbdd_task
+    elif selected_task == TASK_QUERY_MC:
+        task_fn = query_mc_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
         sys.exit(1)
