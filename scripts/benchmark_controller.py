@@ -20,6 +20,7 @@ TASK_COMPILE = "compile"
 TASK_TDDNNF = "tddnnfonly"
 TASK_QUERY = "query"
 TASK_TBDD = "tbdd"
+TASK_TSDD = "tsdd"
 TASK_QUERY_MC = "query_mc"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
@@ -28,6 +29,7 @@ ALLOWED_TASKS = [
     TASK_QUERY,
     TASK_TDDNNF,
     TASK_TBDD,
+    TASK_TSDD,
     TASK_QUERY_MC,
 ]
 TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
@@ -292,7 +294,7 @@ def tddnnf_task(data: dict) -> tuple:
     return compilation_succeeded, data["formula_path"], error_message
 
 
-def tbdd_task(data: dict) -> tuple:
+def dd_task(data: dict) -> tuple:
     """
     Compiles a given SMT formula using the tbdd_task script.
     Returns a tuple (succeeded: bool, test_case: str, error_message: str)
@@ -300,12 +302,24 @@ def tbdd_task(data: dict) -> tuple:
     if data["tlemmas_path"] is None:
         return False, data["formula_path"], "Missing tlemmas"
 
+    if "task" not in data:
+        return False, data["formula_path"], "Missing task"
+    selected_task = data["task"]
+    if selected_task == TASK_TBDD:
+        task_file = "tbdd_task.py"
+        dd_type = "T-BDD"
+    elif selected_task == TASK_TSDD:
+        task_file = "tsdd_task.py"
+        dd_type = "T-SDD"
+    else:
+        raise ValueError("Cannot handle task " + selected_task + " as DD.")
+
     compilation_succeeded = True
     error_message = ""
     try:
-        print(f"[+] Compiling TBDD of {data["formula_path"]}...")
+        print(f"[+] Compiling {dd_type} of {data["formula_path"]}...")
         command = (
-            f"python3 scripts/tasks/tbdd_task.py {data["formula_path"]} "
+            f"python3 scripts/tasks/{task_file} {data["formula_path"]} "
             f"{data["base_output_path"]} {data["tlemmas_path"]}"
         )
         command = command.split(" ")
@@ -428,7 +442,7 @@ def main():
     computed_bdds = {}
     computed_sdds = {}
     computed_nnfs = {}
-    if selected_task in [TASK_TDDNNF, TASK_TBDD, TASK_QUERY_MC]:
+    if selected_task in [TASK_TDDNNF, TASK_TBDD, TASK_TSDD, TASK_QUERY_MC]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
 
@@ -462,6 +476,7 @@ def main():
             "nnf_path": find_associated(test_case, computed_nnfs, for_nnf=True),
             "bdd_path": find_associated(test_case, computed_bdds, for_nnf=True),
             "sdd_path": find_associated(test_case, computed_sdds, for_nnf=True),
+            "task": selected_task,
         }
         datas.append(data)
 
@@ -470,8 +485,8 @@ def main():
         task_fn = compile_task
     elif selected_task == TASK_TDDNNF:
         task_fn = tddnnf_task
-    elif selected_task == TASK_TBDD:
-        task_fn = tbdd_task
+    elif selected_task in [TASK_TBDD, TASK_TSDD]:
+        task_fn = dd_task
     elif selected_task == TASK_QUERY_MC:
         task_fn = query_mc_task
     elif selected_task == TASK_QUERY:
