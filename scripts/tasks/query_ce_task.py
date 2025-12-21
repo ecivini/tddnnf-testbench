@@ -1,14 +1,17 @@
 from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
-from pysmt.shortcuts import read_smtlib, And, Not, is_unsat
-from query_utils import generate_ce_clauses, get_normalized
+from pysmt.shortcuts import read_smtlib, And, Not, is_unsat, Symbol, BOOL
+from pysmt.smtlib.printers import SmtPrinter
+from query_utils import generate_ce_cubes, get_normalized
 from nnf_utils import load_mapping
 from pysmt.fnode import FNode
+from io import StringIO
 
 import subprocess
 
 import sys
 import os
 import time
+import json
 
 
 TIMES_TO_CONSIDER = [
@@ -22,41 +25,80 @@ TIMES_TO_CONSIDER = [
 
 
 # Assumes clause and mapping are noramlized already
-def tddnnf_ce(nnf_path: str, clause: FNode, mapping: dict) -> tuple[bool, float]:
-    start = time.time()
-    # Store query file
-    with open("/tmp/query.txt", "w+") as query_f:
-        query_content = ""
-        if clause.is_or():
-            for literal in clause.args():
-                is_not = literal.is_not()
-                atom = literal.arg(0) if is_not else literal
-                mapped_atom = ("-" if is_not else "") + f"v{mapping[atom]}"
-                query_content += mapped_atom + " "
-        else:
-            is_not = clause.is_not()
-            atom = clause.arg(0) if is_not else clause
-            mapped_atom = ("-" if is_not else "") + f"v{mapping[atom]}"
-            query_content = mapped_atom
+def tddnnf_ce(
+    nnf_path: str,
+    cube: FNode,
+    mapping: dict[FNode, int],
+) -> tuple[bool, float]:
+    """
+    Checks whether the d-DNNF in nnf_path entails the given cube.
 
-        query_content = query_content.strip()
-        query_f.write(query_content)
+    Returns:
+        (entailed: bool, runtime: float)
 
-    # Run ddnnife
-    # TODO: Is it possible to run CE queries with ddnnife?
+    Semantics:
+        Let C = l1 ∧ ... ∧ ln.
+        Returns True iff for all i, Δ ∧ ¬li is UNSAT.
+    """
     tool_path = "./tools/ddnnife-x86_64-linux/bin/ddnnife"
-    command = f"{tool_path} sat /tmp/query.txt"
-    subprocess.run(command.split())
+
+    # Extract cube literals
+    literals = list(cube.args()) if cube.is_and() else [cube]
+
+    # Build queries: one negated literal per line
+    queries = []
+    for lit in literals:
+        is_neg = lit.is_not()
+        atom = lit.arg(0) if is_neg else lit
+
+        if atom in mapping:
+            var = mapping[atom]
+        else:
+            var = str(atom)[1:]  # Removes the initial v
+            assert int(var) in mapping.values()
+
+        # Negate cube literal:
+        #   x   -> -x
+        #   ¬x  ->  x
+        query_lit = f"{var}" if is_neg else f"-{var}"
+        queries.append(query_lit)
+
+    query_file = "/tmp/query.txt"
+    with open(query_file, "w") as f:
+        f.write("\n".join(queries))
+
+    start = time.time()
+    command = [tool_path, "-i", nnf_path, "sat", query_file]
+    proc = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
     end = time.time()
 
-    return False, end - start
+    if proc.returncode != 0:
+        raise RuntimeError(f"ddnnife failed:\n{proc.stderr}")
+
+    # Each line: (query, true|false)
+    for line in proc.stdout.splitlines():
+        if not line.strip():
+            continue
+        _, sat = line.split(",")
+        if sat.strip() == "true":
+            # A model falsifying one cube literal exists
+            return False, end - start
+
+    # All negated literals UNSAT
+    return True, end - start
 
 
-# Check if clause phi entails clause
+# Check if a cube phi entails phi
 # Returns a tuple (entailed, time_taken_ms)
-def smt_ce(phi: FNode, clause: FNode) -> tuple[bool, float]:
+def smt_ce(phi: FNode, cube: FNode) -> tuple[bool, float]:
     start = time.time()
-    phi_and_not_clause = And(phi, Not(clause))
+    phi_and_not_clause = And(phi, Not(cube))
     entailed = is_unsat(phi_and_not_clause)
     end = time.time()
 
@@ -74,6 +116,7 @@ def main():
     # Check base output path exists, otherwise create it
     if not os.path.exists(sys.argv[2]):
         os.makedirs(sys.argv[2])
+    base_out_path = sys.argv[2]
 
     # logger = {}
 
@@ -85,55 +128,54 @@ def main():
     phi = read_smtlib(sys.argv[1])
     phi = get_normalized(phi, converter=normalizer_converter)
 
-    # TODO: Normalize tlemmas
-
     # Get nnf and mapping path
     nnf_path = sys.argv[3]
     mapping_path = sys.argv[4]
-    mapping = load_mapping(normalizer_solver, mapping_path)
+    abstraction, _ = load_mapping(normalizer_solver, mapping_path)
+
+    # Compute abstraction in PySMT
+    pysmt_abstraction = {}
+    for atom in abstraction:
+        pysmt_abstraction[atom] = Symbol(f"v{abstraction[atom]}", BOOL)
 
     # Generate clauses
-    clauses = generate_ce_clauses(normalizer_solver, phi)
+    cubes = generate_ce_cubes(normalizer_solver, phi)
 
     # Run CE test for both SMT and t-d-DNNF
-    for clause in clauses:
+    computations = []
+    for cube in cubes:
         # SMT test
-        smt_result, smt_time = smt_ce(phi, clause)
+        smt_result, smt_time = smt_ce(phi, cube)
         print("SMT:", smt_result, smt_time)
 
-        nnf_result, nnf_time = tddnnf_ce(nnf_path, clause, mapping)
+        nnf_result, nnf_time = tddnnf_ce(nnf_path, cube, abstraction)
         print("NNF:", nnf_result, nnf_time)
-        break
 
-    # start = time.time()
-    # try:
-    #     _ = TheoryDDNNF(
-    #         phi,
-    #         computation_logger=logger,
-    #         base_out_path=sys.argv[2],
-    #         stop_after_allsmt=generate_tlemmas_only,
-    #         store_tlemmas=True,
-    #         solver=solver,
-    #     )
-    # except Exception:
-    #     print(f"[-] Exception during compilation of {sys.argv[1]}")
-    #     sys.exit(1)
-    # total_time = time.time() - start
+        assert smt_result == nnf_result, "Problem with " + str(cube)
 
-    # # Compute effective time
-    # effective_time = 0.0
-    # for key, value in logger["T-DDNNF"].items():
-    #     if key in TIMES_TO_CONSIDER:
-    #         effective_time += value
+        log = {
+            "SMT result": smt_result,
+            "SMT time": smt_time,
+            "d-DNNF result": nnf_result,
+            "d-DNNF time": nnf_time,
+        }
+        computations.append(log)
 
-    # logger["T-DDNNF"]["Effective time"] = effective_time
+    # Store logs
+    logs_path = os.path.join(base_out_path, "logs.json")
+    with open(logs_path, "w+") as logs_f:
+        json.dump(computations, logs_f, indent=4)
 
-    # # This includes also the time to store the output files
-    # logger["T-DDNNF"]["Total time"] = total_time
-
-    # log_path = os.path.join(sys.argv[2], "logs.json")
-    # with open(log_path, "w") as log_file:
-    #     json.dump(logger, log_file, indent=4)
+    # Store cubes
+    cubes_path = os.path.join(base_out_path, "cubes.json")
+    with open(cubes_path, "w+") as cubes_f:
+        cubes_strs = []
+        for cube in cubes:
+            buf = StringIO()
+            printer = SmtPrinter(buf)
+            printer.printer(cube)
+            cubes_strs.append(buf.getvalue())
+        json.dump(cubes_strs, cubes_f, indent=4)
 
 
 if __name__ == "__main__":
