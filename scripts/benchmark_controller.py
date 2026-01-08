@@ -22,6 +22,7 @@ TASK_QUERY = "query"
 TASK_TBDD = "tbdd"
 TASK_TSDD = "tsdd"
 TASK_QUERY_MC = "query_mc"
+TASK_QUERY_CE = "query_ce"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
     TASK_TLEMMAS_WITH_PROJECTION,
@@ -31,6 +32,7 @@ ALLOWED_TASKS = [
     TASK_TBDD,
     TASK_TSDD,
     TASK_QUERY_MC,
+    TASK_QUERY_CE,
 ]
 TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
 
@@ -375,17 +377,66 @@ def query_mc_task(data: dict) -> tuple:
             command, data["timeout"], data["memory_limit"]
         )
         if return_code != 0:
-            print(f"[-] Error during compilation of {data['formula_path']}:", error)
+            print(f"[-] Error during query of {data['formula_path']}:", error)
             compilation_succeeded = False
             error_message = error
         else:
-            print(f"[+] Successfully compiled {data['formula_path']}")
+            print(f"[+] Successfully queried {data['formula_path']}")
     except subprocess.TimeoutExpired:
-        print(f"\t[-] Timeout during compilation of {data['formula_path']}")
+        print(f"\t[-] Timeout during query of {data['formula_path']}")
         compilation_succeeded = False
         error_message = "timeout"
     except Exception as e:
-        print(f"[-] Exception during compilation of {data['formula_path']}: {e}")
+        print(f"[-] Exception during query of {data['formula_path']}: {e}")
+        compilation_succeeded = False
+        error_message = str(e)
+
+    return compilation_succeeded, data["formula_path"], error_message
+
+
+def query_ce_task(data: dict) -> tuple:
+    """
+    Run CE queries on all inputs for plain SMT, d-DNNF, BDD and SDD.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    # if data["tlemmas_path"] is None:
+    #     return False, data["formula_path"], "Missing tlemmas"
+
+    if data["bdd_path"] is None:
+        data["bdd_path"] = "none"
+
+    if data["sdd_path"] is None:
+        data["sdd_path"] = "none"
+
+    if data["nnf_path"] is None:
+        return False, data["formula_path"], "Missing NNF"
+
+    compilation_succeeded = True
+    error_message = ""
+    try:
+        print(f"[+] [CE] Querying formula {data["formula_path"]}...")
+        mapping_path = os.path.dirname(data["nnf_path"])
+        mapping_path = os.path.join(mapping_path, "mapping", "mapping.json")
+        command = (
+            f"python3 scripts/tasks/query_ce_task.py {data["formula_path"]} "
+            f"{data["base_output_path"]} {data["nnf_path"]} {mapping_path}"
+        )
+        command = command.split(" ")
+        return_code, error = run_with_timeout_and_kill_children(
+            command, data["timeout"], data["memory_limit"]
+        )
+        if return_code != 0:
+            print(f"[-] Error during query of {data['formula_path']}:", error)
+            compilation_succeeded = False
+            error_message = error
+        else:
+            print(f"[+] Successfully queried {data['formula_path']}")
+    except subprocess.TimeoutExpired:
+        print(f"\t[-] Timeout during query of {data['formula_path']}")
+        compilation_succeeded = False
+        error_message = "timeout"
+    except Exception as e:
+        print(f"[-] Exception during query of {data['formula_path']}: {e}")
         compilation_succeeded = False
         error_message = str(e)
 
@@ -442,7 +493,13 @@ def main():
     computed_bdds = {}
     computed_sdds = {}
     computed_nnfs = {}
-    if selected_task in [TASK_TDDNNF, TASK_TBDD, TASK_TSDD, TASK_QUERY_MC]:
+    if selected_task in [
+        TASK_TDDNNF,
+        TASK_TBDD,
+        TASK_TSDD,
+        TASK_QUERY_MC,
+        TASK_QUERY_CE,
+    ]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
 
@@ -489,6 +546,8 @@ def main():
         task_fn = dd_task
     elif selected_task == TASK_QUERY_MC:
         task_fn = query_mc_task
+    elif selected_task == TASK_QUERY_CE:
+        task_fn = query_ce_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
         sys.exit(1)

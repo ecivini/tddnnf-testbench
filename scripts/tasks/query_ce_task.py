@@ -5,6 +5,7 @@ from query_utils import generate_ce_cubes, get_normalized
 from nnf_utils import load_mapping
 from pysmt.fnode import FNode
 from io import StringIO
+from ddnnife import Ddnnf
 
 import subprocess
 
@@ -26,27 +27,69 @@ TIMES_TO_CONSIDER = [
 
 # Assumes clause and mapping are noramlized already
 def tddnnf_ce(
-    nnf_path: str,
+    ddnnf: Ddnnf,
     cube: FNode,
     mapping: dict[FNode, int],
 ) -> tuple[bool, float]:
     """
-    Checks whether the d-DNNF in nnf_path entails the given cube.
+    Checks whether the d-DNNF in nnf_path entails not(cube).
 
     Returns:
         (entailed: bool, runtime: float)
-
-    Semantics:
-        Let C = l1 ∧ ... ∧ ln.
-        Returns True iff for all i, Δ ∧ ¬li is UNSAT.
     """
-    tool_path = "./tools/ddnnife-x86_64-linux/bin/ddnnife"
+    # tool_path = "./tools/ddnnife-x86_64-linux/bin/ddnnife"
 
-    # Extract cube literals
+    # # Extract cube literals
+    # literals = list(cube.args()) if cube.is_and() else [cube]
+
+    # # Build queries: one negated literal per line
+    # query = ""
+    # for lit in literals:
+    #     is_neg = lit.is_not()
+    #     atom = lit.arg(0) if is_neg else lit
+
+    #     if atom in mapping:
+    #         var = mapping[atom]
+    #     else:
+    #         var = str(atom)[1:]  # Removes the initial v
+    #         assert int(var) in mapping.values()
+
+    #     query_lit = f"-{var}" if is_neg else f"{var}"
+    #     query += query_lit + " "
+    # query = query.strip()
+
+    # query_file = "/tmp/query.txt"
+    # with open(query_file, "w") as f:
+    #     f.write(query)
+
+    # start = time.time()
+    # command = [tool_path, "-i", nnf_path, "sat", query_file]
+    # proc = subprocess.run(
+    #     command,
+    #     stdout=subprocess.PIPE,
+    #     stderr=subprocess.PIPE,
+    #     text=True,
+    # )
+
+    # end = time.time()
+
+    # if proc.returncode != 0:
+    #     raise RuntimeError(f"ddnnife failed:\n{proc.stderr}")
+
+    # # Each line: (query, true|false)
+    # for line in proc.stdout.splitlines():
+    #     if not line.strip():
+    #         continue
+    #     _, sat = line.split(",")
+    #     if sat.strip() == "true":
+    #         # A model falsifying one cube literal exists
+    #         return False, end - start
+
+    # # All negated literals UNSAT
+    # return True, end - start
+    # TODO: Add number of features instead of None
     literals = list(cube.args()) if cube.is_and() else [cube]
-
-    # Build queries: one negated literal per line
-    queries = []
+    mapped_literals = []
     for lit in literals:
         is_neg = lit.is_not()
         atom = lit.arg(0) if is_neg else lit
@@ -57,52 +100,24 @@ def tddnnf_ce(
             var = str(atom)[1:]  # Removes the initial v
             assert int(var) in mapping.values()
 
-        # Negate cube literal:
-        #   x   -> -x
-        #   ¬x  ->  x
-        query_lit = f"{var}" if is_neg else f"-{var}"
-        queries.append(query_lit)
-
-    query_file = "/tmp/query.txt"
-    with open(query_file, "w") as f:
-        f.write("\n".join(queries))
+        query_lit = -int(var) if is_neg else int(var)
+        mapped_literals.append(query_lit)
 
     start = time.time()
-    command = [tool_path, "-i", nnf_path, "sat", query_file]
-    proc = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    sat = ddnnf.as_mut().is_sat(mapped_literals)
 
-    end = time.time()
-
-    if proc.returncode != 0:
-        raise RuntimeError(f"ddnnife failed:\n{proc.stderr}")
-
-    # Each line: (query, true|false)
-    for line in proc.stdout.splitlines():
-        if not line.strip():
-            continue
-        _, sat = line.split(",")
-        if sat.strip() == "true":
-            # A model falsifying one cube literal exists
-            return False, end - start
-
-    # All negated literals UNSAT
-    return True, end - start
+    return not sat, time.time() - start
 
 
-# Check if a cube phi entails phi
+# Check if phi entails not(cube)
 # Returns a tuple (entailed, time_taken_ms)
-def smt_ce(phi: FNode, cube: FNode) -> tuple[bool, float]:
+def smt_ce(phi: FNode, cube: FNode, phi_reading_time: float = 0) -> tuple[bool, float]:
     start = time.time()
-    phi_and_not_clause = And(phi, Not(cube))
+    phi_and_not_clause = And(phi, cube)
     entailed = is_unsat(phi_and_not_clause)
     end = time.time()
 
-    return entailed, end - start
+    return entailed, end - start + phi_reading_time
 
 
 def main():
@@ -125,8 +140,10 @@ def main():
     normalizer_converter = normalizer_solver.get_converter()
 
     # Normalize phi and tlemmas
+    read_phi_start = time.time()
     phi = read_smtlib(sys.argv[1])
     phi = get_normalized(phi, converter=normalizer_converter)
+    read_phi_time = time.time() - read_phi_start
 
     # Get nnf and mapping path
     nnf_path = sys.argv[3]
@@ -143,12 +160,13 @@ def main():
 
     # Run CE test for both SMT and t-d-DNNF
     computations = []
+    ddnnf = Ddnnf.from_file(nnf_path, None)
     for cube in cubes:
         # SMT test
-        smt_result, smt_time = smt_ce(phi, cube)
+        smt_result, smt_time = smt_ce(phi, cube, phi_reading_time=0)
         print("SMT:", smt_result, smt_time)
 
-        nnf_result, nnf_time = tddnnf_ce(nnf_path, cube, abstraction)
+        nnf_result, nnf_time = tddnnf_ce(ddnnf, cube, abstraction)
         print("NNF:", nnf_result, nnf_time)
 
         assert smt_result == nnf_result, "Problem with " + str(cube)

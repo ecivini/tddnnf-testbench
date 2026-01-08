@@ -31,7 +31,7 @@ def generate_ce_cubes(solver: SMTEnumerator, phi: FNode, seed: int = 42) -> list
 
 # TODO: Find appropriate function to compute the number of cubes
 def _compute_cubes_num(atoms_num: int) -> int:
-    return 10 * atoms_num
+    return atoms_num
 
 
 def _compute_cube(solver: SMTEnumerator, atoms: list[FNode]) -> FNode:
@@ -56,7 +56,7 @@ def _compute_cube(solver: SMTEnumerator, atoms: list[FNode]) -> FNode:
 
 
 def _max_cube_size(atoms_num: int) -> int:
-    return atoms_num // 3
+    return min(atoms_num, 5)
 
 
 def _min_cube_size(atoms_num: int) -> int:
