@@ -102,7 +102,7 @@ def create_cactus_plot(
     curr_label: str,
     third: dict | None = None,
     third_label: str | None = None,
-    out_path: str = "cactus.png",
+    out_path: str = "cactus.pdf",
 ):
     previous_times = []
     current_times = []
@@ -149,7 +149,7 @@ def create_cactus_plot(
 
     plt.xlabel("Number of problems compiled")
     plt.ylabel("Time (s)")
-    plt.title(f"Solvers comparison: {prev_label} vs {curr_label}")
+    # plt.title(f"{prev_label} vs {curr_label}")
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
@@ -161,7 +161,7 @@ def create_scatter_plot(
     current: dict,
     prev_label: str,
     curr_label: str,
-    out_path: str = "scatter.png",
+    out_path: str = "scatter.pdf",
 ):
     previous_times = []
     current_times = []
@@ -191,15 +191,23 @@ def create_scatter_plot(
     ax.scatter(
         x=current_times,
         y=previous_times,
-        color="darkgreen",
+        color="lightskyblue",
         edgecolors="black",
-        s=25,
+        s=100,
         zorder=4,
-        alpha=0.2,
+        alpha=1,
+        marker="X",
     )
 
     # Reference line y = x
-    ax.plot([1e-2, timeout], [1e-2, timeout], "k--", label="y = x", zorder=2)
+    ax.plot(
+        [1e-2, timeout],
+        [1e-2, timeout],
+        label="y = x",
+        zorder=2,
+        color="gray",
+        linestyle="--",
+    )
 
     # Timeout lines (dashed)
     ax.axvline(
@@ -225,14 +233,14 @@ def create_scatter_plot(
     ax.set_ylim(bottom=1e-2, top=timeout * 1.1)
 
     # Labels
-    ax.set_xlabel(f"{curr_label} compilation time", fontsize=12)
-    ax.set_ylabel(f"{prev_label} compilation time", fontsize=12)
+    ax.set_xlabel(f"{curr_label}", fontsize=24)
+    ax.set_ylabel(f"{prev_label}", fontsize=24)
 
     # Grid
     ax.grid(True, which="both", linestyle=":", linewidth=0.5)
 
     # Legend
-    ax.legend()
+    # ax.legend()
 
     # Show plot
     plt.tight_layout()
@@ -249,19 +257,19 @@ def create_counter_scatter_plot(
     previous_edges = []
     current_edges = []
 
-    timeout = max(max(previous.values()), max(current.values())) * 1.2
-    # linthresh = timeout / 16  # Linear region until 1
-
     for problem in current.keys():
         if problem not in previous:
             continue
 
         previous_edges.append(
-            previous[problem] if previous[problem] <= timeout else timeout
+            previous[problem]  # if previous[problem] <= timeout else timeout
         )
         current_edges.append(
-            current[problem] if current[problem] <= timeout else timeout
+            current[problem]  # if current[problem] <= timeout else timeout
         )
+
+    timeout = max(max(previous_edges), max(current_edges))
+    # linthresh = timeout / 16  # Linear region until 1
 
     # Create figure
     fig, ax = plt.subplots(figsize=(7, 7))
@@ -270,25 +278,33 @@ def create_counter_scatter_plot(
     ax.scatter(
         x=current_edges,
         y=previous_edges,
-        color="darkgreen",
+        color="lightskyblue",
         edgecolors="black",
-        s=25,
+        s=100,
         zorder=4,
-        alpha=0.2,
+        alpha=1,
+        marker="X",
     )
 
     # Reference line y = x
-    ax.plot([1e-2, timeout], [1e-2, timeout], "k--", label="y = x", zorder=2)
+    ax.plot(
+        [1e-2, timeout],
+        [1e-2, timeout],
+        label="y = x",
+        zorder=2,
+        color="gray",
+        linestyle="--",
+    )
 
     # Timeout lines (dashed)
-    ax.axvline(timeout, linestyle="--", color="gray")
-    ax.axhline(timeout, linestyle="--", color="gray")
+    # ax.axvline(timeout, linestyle="--", color="gray")
+    # ax.axhline(timeout, linestyle="--", color="gray")
 
     # Set symlog scale
     # ax.set_xscale('symlog', lprev_solverinthresh=linthresh)
     # ax.set_yscale('symlog', linthresh=linthresh)
-    ax.set_xscale("symlog")
-    ax.set_yscale("symlog")
+    # ax.set_xscale("linear")
+    # ax.set_yscale("equal")
     ax.set_aspect("equal")
 
     # Set limits
@@ -296,14 +312,14 @@ def create_counter_scatter_plot(
     ax.set_ylim(bottom=1e-2, top=timeout * 1.1)
 
     # Labelsprev_solver
-    ax.set_xlabel(current_label, fontsize=12)
-    ax.set_ylabel(previous_label, fontsize=12)
+    ax.set_xlabel(current_label, fontsize=24)
+    ax.set_ylabel(previous_label, fontsize=24)
 
     # Grid
     ax.grid(True, which="both", linestyle=":", linewidth=0.5)
 
     # Legend
-    ax.legend()
+    # ax.legend()
 
     # Show plot
     plt.tight_layout()
@@ -324,13 +340,6 @@ if __name__ == "__main__":
         )
     )
 
-    # current_times, curr_timeouts, curr_nodes, curr_edges, curr_par_models = (
-    #     get_current_results_times(
-    #         "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
-    #         [
-    #             "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
-    #         ],
-    # )
     current_times, curr_timeouts, curr_nodes, curr_edges, curr_par_models = (
         get_current_results_times(
             "results/tddnnf_compilation_rand_parallel/errors.json",
@@ -351,6 +360,7 @@ if __name__ == "__main__":
         )
     )
 
+    # PLANNING
     # previous_times, prev_timeouts, prev_nodes, prev_edges, prev_par_models = (
     #     get_current_results_times(
     #         "results/tddnnf_compilation_planning_h3_sequential/errors.json",
@@ -360,21 +370,20 @@ if __name__ == "__main__":
     #     )
     # )
 
-    # PLANNING
-    # previous_times, prev_timeouts, prev_nodes, prev_edges, prev_par_models = (
+    # current_times, curr_timeouts, curr_nodes, curr_edges, curr_par_models = (
     #     get_current_results_times(
-    #         "results/tddnnf_compilation_planning_h3_parallel45/errors.json",
+    #         "results/tddnnf_compilation_planning_h3_parallel/errors.json",
     #         [
-    #             "results/tddnnf_compilation_planning_h3_parallel45/data/benchmark/planning/h3/Painter",  # noqa
+    #             "results/tddnnf_compilation_planning_h3_parallel/data/benchmark/planning/h3/Painter",  # noqa
     #         ],
     #     )
     # )
 
-    # current_times, curr_timeouts, curr_nodes, curr_edges, curr_par_models = (
+    # x3_times, x3_timeouts, x3_nodes, x3_edges, x3_par_models = (
     #     get_current_results_times(
-    #         "results/tddnnf_compilation_planning_h3_parallel45_projected_atoms/errors.json",
+    #         "results/tddnnf_compilation_planning_h3_parallel_proj/errors.json",
     #         [
-    #             "results/tddnnf_compilation_planning_h3_parallel45_projected_atoms/data/benchmark/planning/h3/Painter",  # noqa
+    #             "results/tddnnf_compilation_planning_h3_parallel_proj/data/benchmark/planning/h3/Painter",  # noqa
     #         ],
     #     )
     # )
@@ -387,9 +396,9 @@ if __name__ == "__main__":
     print("Missing keys:", prev_keys - curr_keys)
 
     # create_bar_plot(previous_times, current_times)
-    prev_solver = "Sequential AllSMT"
-    curr_solver = "Parallel[45]"
-    x3_solver = "Parallel[45] Projected Atoms"
+    prev_solver = "Sequential"
+    curr_solver = "Parallel"
+    x3_solver = "Parallel with Projection"
 
     # Cactus - compilation times
     create_cactus_plot(
@@ -399,7 +408,7 @@ if __name__ == "__main__":
         curr_solver,
         third=x3_times,
         third_label=x3_solver,
-        out_path="seq_vs_par45_vs_par45_proj_atoms_comp_time.png",
+        out_path="seq_vs_par45_vs_par45_proj_atoms_comp_time.pdf",
     )
 
     # Scatter - Compilation time
@@ -408,7 +417,7 @@ if __name__ == "__main__":
         current_times,
         prev_solver,
         curr_solver,
-        out_path="seq_vs_par45_comp_time.png",
+        out_path="seq_vs_par45_comp_time.pdf",
     )
 
     create_scatter_plot(
@@ -416,7 +425,7 @@ if __name__ == "__main__":
         x3_times,
         curr_solver,
         x3_solver,
-        out_path="par45_vs_par45_proj_atoms_comp_time.png",
+        out_path="par45_vs_par45_proj_atoms_comp_time.pdf",
     )
 
     create_scatter_plot(
@@ -424,7 +433,7 @@ if __name__ == "__main__":
         x3_times,
         prev_solver,
         x3_solver,
-        out_path="seq_vs_par45_proj_atoms_comp_time.png",
+        out_path="seq_vs_par45_proj_atoms_comp_time.pdf",
     )
 
     # Scatter - dDNNF edges
@@ -433,7 +442,7 @@ if __name__ == "__main__":
         curr_edges,
         f"{prev_solver} - d-DNNF edges",
         f"{curr_solver} - d-DNNF edges",
-        "seq_vs_par45_ddnnf_edges.png",
+        "seq_vs_par45_ddnnf_edges.pdf",
     )
 
     create_counter_scatter_plot(
@@ -441,7 +450,7 @@ if __name__ == "__main__":
         x3_edges,
         f"{prev_solver} - d-DNNF edges",
         f"{x3_solver} - d-DNNF edges",
-        "seq_vs_par45_proj_atoms_ddnnf_edges.png",
+        "seq_vs_par45_proj_atoms_ddnnf_edges.pdf",
     )
 
     create_counter_scatter_plot(
@@ -449,7 +458,7 @@ if __name__ == "__main__":
         x3_edges,
         f"{curr_solver} - d-DNNF edges",
         f"{x3_solver} - d-DNNF edges",
-        "par45_vs_par45_proj_atoms_ddnnf_edges.png",
+        "par45_vs_par45_proj_atoms_ddnnf_edges.pdf",
     )
 
     # Scatter - dDNNF nodes
@@ -458,7 +467,7 @@ if __name__ == "__main__":
         curr_nodes,
         f"{prev_solver} - d-DNNF nodes",
         f"{curr_solver} - d-DNNF nodes",
-        "seq_vs_par45_ddnnf_nodes.png",
+        "seq_vs_par45_ddnnf_nodes.pdf",
     )
 
     create_counter_scatter_plot(
@@ -466,7 +475,7 @@ if __name__ == "__main__":
         x3_nodes,
         f"{prev_solver} - d-DNNF nodes",
         f"{x3_solver} - d-DNNF nodes",
-        "seq_vs_par45_proj_atoms_ddnnf_nodes.png",
+        "seq_vs_par45_proj_atoms_ddnnf_nodes.pdf",
     )
 
     create_counter_scatter_plot(
@@ -474,5 +483,5 @@ if __name__ == "__main__":
         x3_nodes,
         f"{curr_solver} - d-DNNF nodes",
         f"{x3_solver} - d-DNNF nodes",
-        "par45_vs_par45_proj_atoms_ddnnf_nodes.png",
+        "par45_vs_par45_proj_atoms_ddnnf_nodes.pdf",
     )

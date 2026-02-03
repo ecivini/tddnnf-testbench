@@ -56,11 +56,11 @@ def _compute_cube(solver: SMTEnumerator, atoms: list[FNode]) -> FNode:
 
 
 def _max_cube_size(atoms_num: int) -> int:
-    return min(atoms_num, 5)
+    return 3  # int(atoms_num * 0.95)
 
 
 def _min_cube_size(atoms_num: int) -> int:
-    return min(atoms_num, 3)
+    return 1  # int(atoms_num * 0.7)
 
 
 def _new_literal(atoms: list[FNode]) -> tuple[FNode, int]:

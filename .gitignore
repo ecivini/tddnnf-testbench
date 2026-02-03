@@ -217,6 +217,12 @@ __marimo__/
 
 # Previous data files
 data/michelutti_tdds
+data/ecai
 
 # Ignore results/ folder
 results/
+
+# Images
+*.png
+
+plots/

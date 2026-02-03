@@ -4,7 +4,8 @@ import shutil
 
 
 def build_data_path(server: str) -> str:
-    base = f"data/results/{server}_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/data/benchmark/timedout" # noqa
+    # base = f"data/results/{server}_all_tlemmas/{server}_tlemmas_all_1Prob_45Procs/data/benchmark" # noqa
+    base = f"data/results/{server}_tlemmas_rand_sequential/{server}_tlemmas_rand_total_sequential/data/benchmark"  # noqa
     return os.path.join(base, server)
 
 
@@ -15,13 +16,13 @@ DATA_FOLDERS = [
 ]
 
 ERROR_FILES = [
-    "data/results/qui_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
-    "data/results/quo_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
-    "data/results/qua_tlemmas/timedout_tlemmas_1Prob_45ProcsAllSMT/errors.json", # noqa
+    "data/results/qua_tlemmas_rand_sequential/qua_tlemmas_rand_total_sequential/errors.json",  # noqa
+    "data/results/quo_tlemmas_rand_sequential/quo_tlemmas_rand_total_sequential/errors.json",  # noqa
+    "data/results/qui_tlemmas_rand_sequential/qui_tlemmas_rand_total_sequential/errors.json",  # noqa
 ]
 
 
-BASE_OUT_PATH = "data/results/merged_tlemmas"
+BASE_OUT_PATH = "data/results/merged_all_tlemmas_sequential"
 
 
 def copy_to_folder(file_path: str, target_path: str) -> None:
@@ -33,12 +34,11 @@ def copy_to_folder(file_path: str, target_path: str) -> None:
 def merge_tlemmas() -> int:
     smt_file_counter = 0
     for starting_dir in DATA_FOLDERS:
+        print("Merging from:", starting_dir)
         for root, _, files in os.walk(starting_dir):
             for file in files:
                 file_path = os.path.join(root, file)
-                target_path = file_path.replace(
-                    starting_dir, BASE_OUT_PATH
-                )
+                target_path = file_path.replace(starting_dir, BASE_OUT_PATH)
                 copy_to_folder(file_path, target_path)
 
                 if file.endswith(".smt2"):
@@ -54,8 +54,9 @@ def merge_errors(out_error_file_path: str) -> int:
             errors = json.load(f)
             merged_errors.update(errors)
 
-    with open(out_error_file_path, "w+") as f:
-        json.dump(merged_errors, f, indent=4)
+    if len(merged_errors.keys()):
+        with open(out_error_file_path, "w+") as f:
+            json.dump(merged_errors, f, indent=4)
 
     return len(merged_errors.keys())
 

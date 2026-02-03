@@ -1,18 +1,23 @@
 from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
-from pysmt.shortcuts import read_smtlib, And, Not, is_unsat, Symbol, BOOL
+from theorydd.solvers.solver import SMTEnumerator
+from pysmt.shortcuts import read_smtlib, Symbol, BOOL
 from pysmt.smtlib.printers import SmtPrinter
 from query_utils import generate_ce_cubes, get_normalized
 from nnf_utils import load_mapping
 from pysmt.fnode import FNode
+from pysmt.shortcuts import Solver
 from io import StringIO
 from ddnnife import Ddnnf
-
-import subprocess
+from theorydd.tdd.theory_bdd import TheoryBDD
+from theorydd.tdd.theory_sdd import TheorySDD
 
 import sys
 import os
 import time
 import json
+
+
+INCREMENTAL_SMT = True
 
 
 TIMES_TO_CONSIDER = [
@@ -25,7 +30,7 @@ TIMES_TO_CONSIDER = [
 ]
 
 
-# Assumes clause and mapping are noramlized already
+# Assumes cube is already the negated cube
 def tddnnf_ce(
     ddnnf: Ddnnf,
     cube: FNode,
@@ -37,56 +42,6 @@ def tddnnf_ce(
     Returns:
         (entailed: bool, runtime: float)
     """
-    # tool_path = "./tools/ddnnife-x86_64-linux/bin/ddnnife"
-
-    # # Extract cube literals
-    # literals = list(cube.args()) if cube.is_and() else [cube]
-
-    # # Build queries: one negated literal per line
-    # query = ""
-    # for lit in literals:
-    #     is_neg = lit.is_not()
-    #     atom = lit.arg(0) if is_neg else lit
-
-    #     if atom in mapping:
-    #         var = mapping[atom]
-    #     else:
-    #         var = str(atom)[1:]  # Removes the initial v
-    #         assert int(var) in mapping.values()
-
-    #     query_lit = f"-{var}" if is_neg else f"{var}"
-    #     query += query_lit + " "
-    # query = query.strip()
-
-    # query_file = "/tmp/query.txt"
-    # with open(query_file, "w") as f:
-    #     f.write(query)
-
-    # start = time.time()
-    # command = [tool_path, "-i", nnf_path, "sat", query_file]
-    # proc = subprocess.run(
-    #     command,
-    #     stdout=subprocess.PIPE,
-    #     stderr=subprocess.PIPE,
-    #     text=True,
-    # )
-
-    # end = time.time()
-
-    # if proc.returncode != 0:
-    #     raise RuntimeError(f"ddnnife failed:\n{proc.stderr}")
-
-    # # Each line: (query, true|false)
-    # for line in proc.stdout.splitlines():
-    #     if not line.strip():
-    #         continue
-    #     _, sat = line.split(",")
-    #     if sat.strip() == "true":
-    #         # A model falsifying one cube literal exists
-    #         return False, end - start
-
-    # # All negated literals UNSAT
-    # return True, end - start
     # TODO: Add number of features instead of None
     literals = list(cube.args()) if cube.is_and() else [cube]
     mapped_literals = []
@@ -109,22 +64,89 @@ def tddnnf_ce(
     return not sat, time.time() - start
 
 
-# Check if phi entails not(cube)
+# Check if phi entails C
+# cube is already assumed to be equal to not(C)
 # Returns a tuple (entailed, time_taken_ms)
-def smt_ce(phi: FNode, cube: FNode, phi_reading_time: float = 0) -> tuple[bool, float]:
+def smt_ce(
+    cube: FNode, phi_reading_time: float = 0, solver: Solver = None, phi: FNode = None
+) -> tuple[bool, float]:
     start = time.time()
-    phi_and_not_clause = And(phi, cube)
-    entailed = is_unsat(phi_and_not_clause)
+    if INCREMENTAL_SMT:
+        assert solver is not None, "Incremental SMT without solver"
+        solver.push()
+        solver.add_assertion(cube)
+        entailed = not solver.solve()
+        solver.pop()
+    else:
+        assert phi is not None, "Non incremental SMT without PHI"
+        solver = Solver()
+        solver.add_assertion(phi)
+        solver.add_assertion(cube)
+        entailed = not solver.solve()
     end = time.time()
 
     return entailed, end - start + phi_reading_time
 
 
+# Check if phi entails C
+# cube is already assumed to be equal to not(C)
+# Returns a tuple (entailed, time_taken_ms)
+def tsdd_ce(
+    phi: FNode, cube: FNode, base_path: str, normalizer: SMTEnumerator
+) -> tuple[bool, float]:
+    tsdd = TheorySDD(phi, folder_name=base_path, solver=normalizer)
+
+    start = time.time()
+
+    literals = list(cube.args()) if cube.is_and() else [cube]
+    conditions = []
+    for lit in literals:
+        is_neg = lit.is_not()
+        atom = lit.arg(0) if is_neg else lit
+
+        abstr_atom = tsdd.abstraction[atom]
+        label = -abstr_atom if is_neg else abstr_atom
+
+        conditions.append(label)
+
+    entailed = not tsdd.is_sat_with_condition(conditions)
+    end = time.time()
+
+    return entailed, end - start
+
+
+# Check if phi entails C
+# cube is already assumed to be equal to not(C)
+# Returns a tuple (entailed, time_taken_ms)
+def tbdd_ce(
+    phi: FNode, cube: FNode, base_path: str, normalizer: SMTEnumerator
+) -> tuple[bool, float]:
+    tsdd = TheoryBDD(phi, folder_name=base_path, solver=normalizer)
+
+    start = time.time()
+
+    literals = list(cube.args()) if cube.is_and() else [cube]
+    conditions = []
+    for lit in literals:
+        is_neg = lit.is_not()
+        atom = lit.arg(0) if is_neg else lit
+
+        abstr_atom = tsdd.abstraction[atom]
+        label = f"-{abstr_atom}" if is_neg else abstr_atom
+
+        conditions.append(label)
+
+    entailed = not tsdd.is_sat_with_condition(conditions)
+    end = time.time()
+
+    return entailed, end - start
+
+
 def main():
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         print(
             "Usage: python3 scripts/tasks/query_ce_task.py <input formula> "
-            "<base output path> <nnf_path> <mapping_path>"
+            "<base output path> <nnf_path> <tsdd_path> <tbdd_path>"
         )
         sys.exit(1)
 
@@ -139,6 +161,9 @@ def main():
     normalizer_solver = MathSATTotalEnumerator()
     normalizer_converter = normalizer_solver.get_converter()
 
+    print("PHI:", sys.argv[1])
+    print("NNF:", sys.argv[3])
+
     # Normalize phi and tlemmas
     read_phi_start = time.time()
     phi = read_smtlib(sys.argv[1])
@@ -147,8 +172,15 @@ def main():
 
     # Get nnf and mapping path
     nnf_path = sys.argv[3]
-    mapping_path = sys.argv[4]
+    mapping_path = os.path.dirname(nnf_path)
+    mapping_path = os.path.join(mapping_path, "mapping", "mapping.json")
     abstraction, _ = load_mapping(normalizer_solver, mapping_path)
+
+    # Get DDs paths
+    tsdd_base_path = sys.argv[4]
+    use_tsdds = tsdd_base_path != "none"
+    tbdd_base_path = sys.argv[5]
+    use_tbdds = tbdd_base_path != "none"
 
     # Compute abstraction in PySMT
     pysmt_abstraction = {}
@@ -160,22 +192,51 @@ def main():
 
     # Run CE test for both SMT and t-d-DNNF
     computations = []
+
     ddnnf = Ddnnf.from_file(nnf_path, None)
+
+    solver = Solver("msat")
+    solver.add_assertion(phi)
+
     for cube in cubes:
         # SMT test
-        smt_result, smt_time = smt_ce(phi, cube, phi_reading_time=0)
+        smt_result, smt_time = smt_ce(cube, phi_reading_time=0, solver=solver, phi=phi)
         print("SMT:", smt_result, smt_time)
 
         nnf_result, nnf_time = tddnnf_ce(ddnnf, cube, abstraction)
         print("NNF:", nnf_result, nnf_time)
 
+        tsdd_result, tsdd_time = None, None
+        if use_tsdds:
+            tsdd_result, tsdd_time = tsdd_ce(
+                phi, cube, tsdd_base_path, normalizer_solver
+            )
+            print("T-SDD:", tsdd_result, tsdd_time)
+
+        tbdd_result, tbdd_time = None, None
+        if use_tbdds:
+            tbdd_result, tbdd_time = tbdd_ce(
+                phi, cube, tbdd_base_path, normalizer_solver
+            )
+            print("T-BDD:", tbdd_result, tbdd_time)
+
         assert smt_result == nnf_result, "Problem with " + str(cube)
+        assert (
+            not use_tsdds or tsdd_result == nnf_result
+        ), "Problem with T-SDD for" + str(cube)
+        assert (
+            not use_tbdds or tbdd_result == nnf_result
+        ), "Problem with T-BDD for" + str(cube)
 
         log = {
             "SMT result": smt_result,
             "SMT time": smt_time,
             "d-DNNF result": nnf_result,
             "d-DNNF time": nnf_time,
+            "T-SDD result": tsdd_result,
+            "T-SDD time": tsdd_time,
+            "T-BDD result": tbdd_result,
+            "T-BDD time": tbdd_time,
         }
         computations.append(log)
 

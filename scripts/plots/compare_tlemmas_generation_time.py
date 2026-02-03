@@ -121,7 +121,7 @@ def create_bar_plot(previous: dict, current: dict):
     plt.xticks([i + 0.2 for i in x], problems, rotation=90)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("tlemmas_bar.png")
+    plt.savefig("tlemmas_bar.pdf")
 
 
 def create_cactus_plot(
@@ -132,7 +132,7 @@ def create_cactus_plot(
     third: dict | None = None,  # Eventual third solver data
     x3_label: str | None = None,  # Eventual third solver label
     show_vbs: bool = False,
-    out_path: str = "cactus.png",
+    out_path: str = "cactus.pdf",
 ) -> None:
     previous_times = []
     current_times = []
@@ -185,10 +185,10 @@ def create_cactus_plot(
 
     plt.xlabel("Number of problems solved")
     plt.ylabel("Time (s)")
-    plt.title(
-        f"Solvers comparison: {x1_label} vs {x2_label}"
-        + (f" vs {x3_label}" if x3_label else "")
-    )
+    # plt.title(
+    #     f"{x1_label} vs {x2_label}"
+    #     + (f" vs {x3_label}" if x3_label else "")
+    # )
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
@@ -201,7 +201,7 @@ def create_scatter_plot(
     x_label: str,
     y_label: str,
     lower_threshold: float = 1.0,
-    out_path: str = "scatter.png",
+    out_path: str = "scatter.pdf",
 ):
     previous_times = []
     current_times = []
@@ -226,7 +226,7 @@ def create_scatter_plot(
             current_under_lower_threshold += 1
 
     timeout = DEFAULT_TIMEOUT
-    linthresh = 1  # Linear region until 1
+    linthresh = 10  # Linear region until 1
 
     # Create figure
     fig, ax = plt.subplots(figsize=(7, 7))
@@ -235,26 +235,41 @@ def create_scatter_plot(
     ax.scatter(
         x=current_times,
         y=previous_times,
-        color="darkgreen",
+        color="lightskyblue",
         edgecolors="black",
-        s=25,
+        s=100,
         zorder=4,
-        alpha=0.2,
+        alpha=1,
+        marker="X",
     )
 
     # Reference line y = x
-    ax.plot([1e-2, timeout], [1e-2, timeout], "k--", label="y = x", zorder=2)
+    ax.plot(
+        [1e-2, timeout],
+        [1e-2, timeout],
+        label="y = x",
+        zorder=2,
+        color="gray",
+        linestyle="--",
+    )
 
     # Timeout lines (dashed)
     ax.axvline(
         timeout,
         linestyle="--",
         color="gray",
-        label=(
-            f"{x_label} timeouts: {current_timeouts} "  # noqa
-            f"| below {lower_threshold} sec: {current_under_lower_threshold}"
-        ),
+        # label=(
+        #     f"{x_label} timeouts: {current_timeouts} "  # noqa
+        #     f"| below {lower_threshold} sec: {current_under_lower_threshold}"
+        # ),
     )
+
+    print(
+        f"\n{out_path}\n"
+        f"{x_label} timeouts: {current_timeouts}"  # noqa
+        f"| below {lower_threshold} sec: {current_under_lower_threshold}"
+    )
+
     ax.axhline(
         timeout,
         linestyle="--",
@@ -263,6 +278,11 @@ def create_scatter_plot(
             f"{y_label} timeouts: {previous_timeouts} "  # noqa
             f"| below {lower_threshold} sec: {previous_under_lower_threshold}"
         ),
+    )
+
+    print(
+        f"{y_label} timeouts: {previous_timeouts} "  # noqa
+        f"| below {lower_threshold} sec: {previous_under_lower_threshold}"
     )
 
     # Set symlog scale
@@ -275,14 +295,14 @@ def create_scatter_plot(
     ax.set_ylim(bottom=1e-2, top=timeout * 1.1)
 
     # Labels
-    ax.set_xlabel(f"{x_label} times", fontsize=12)
-    ax.set_ylabel(f"{y_label} times", fontsize=12)
+    ax.set_xlabel(f"{x_label} times", fontsize=24)
+    ax.set_ylabel(f"{y_label} times", fontsize=24)
 
     # Grid
     ax.grid(True, which="both", linestyle=":", linewidth=0.5)
 
     # Legend
-    ax.legend(loc="lower right")
+    # ax.legend(loc="lower right")
 
     # Show plot
     plt.tight_layout()
@@ -294,7 +314,7 @@ def create_tlemmas_scatter_plot(
     current: dict,
     prev_label: str,
     curr_label: str,
-    out_path: str = "scatter_num.png",
+    out_path: str = "scatter_num.pdf",
 ):
     previous_times = []
     current_times = []
@@ -307,7 +327,7 @@ def create_tlemmas_scatter_plot(
         current_times.append(current[problem])
 
     timeout = max(max(previous_times), max(current_times))
-    # linthresh = 1  # Linear region until 1
+    linthresh = None  # Linear region until 1
 
     # Create figure
     fig, ax = plt.subplots(figsize=(7, 7))
@@ -316,23 +336,31 @@ def create_tlemmas_scatter_plot(
     ax.scatter(
         x=current_times,
         y=previous_times,
-        color="darkgreen",
+        color="lightskyblue",
         edgecolors="black",
-        s=25,
+        s=100,
         zorder=4,
-        alpha=0.2,
+        alpha=1,
+        marker="X",
     )
 
     # Reference line y = x
-    ax.plot([1e-2, timeout], [1e-2, timeout], "k--", label="y = x", zorder=2)
+    ax.plot(
+        [1e-2, timeout],
+        [1e-2, timeout],
+        label="y = x",
+        zorder=2,
+        color="gray",
+        linestyle="--",
+    )
 
     # Timeout lines (dashed)
-    ax.axvline(timeout, linestyle="--", color="gray")
-    ax.axhline(timeout, linestyle="--", color="gray")
+    # ax.axvline(timeout, linestyle="--", color="gray")
+    # ax.axhline(timeout, linestyle="--", color="gray")
 
     # Set symlog scale
-    # ax.set_xscale('symlog', linthresh=linthresh)
-    # ax.set_yscale('symlog', linthresh=linthresh)
+    ax.set_xscale("symlog")  # , linthresh=linthresh)
+    ax.set_yscale("symlog")  # , linthresh=linthresh)
     ax.set_aspect("equal")
 
     # Set limits
@@ -340,14 +368,14 @@ def create_tlemmas_scatter_plot(
     ax.set_ylim(bottom=1e-2, top=timeout * 1.1)
 
     # Labels
-    ax.set_xlabel(f"{curr_label} T-lemmas number", fontsize=12)
-    ax.set_ylabel(f"{prev_label} T-lemmas number", fontsize=12)
+    ax.set_xlabel(f"{curr_label}", fontsize=24)
+    ax.set_ylabel(f"{prev_label}", fontsize=24)
 
     # Grid
     ax.grid(True, which="both", linestyle=":", linewidth=0.5)
 
     # Legend
-    ax.legend()
+    # ax.legend()
 
     # Show plot
     plt.tight_layout()
@@ -359,52 +387,52 @@ if __name__ == "__main__":
 
     ###########################################################################
     # RAND PROBLEMS
-    previous_times, prev_tlemmas = get_current_results_times(
-        "data/results/merged_all_tlemmas_sequential/errors.json",
-        [
-            "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
-            "data/results/merged_all_tlemmas_sequential/randgen/data",
-        ],
-    )
-
-    current_times, curr_tlemmas = get_current_results_times(
-        "data/results/merged_all_tlemmas/errors.json",
-        [
-            "data/results/merged_all_tlemmas/ldd_randgen/data",
-            "data/results/merged_all_tlemmas/randgen/data",
-        ],
-    )
-
-    x3_times, x3_tlemmas = get_current_results_times(
-        "data/results/merged_all_tlemmas_projected/errors.json",
-        [
-            "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
-            "data/results/merged_all_tlemmas_projected/randgen/data",
-        ],
-    )
-
-    ###########################################################################
-    # PLANNING PROBLEMS
     # previous_times, prev_tlemmas = get_current_results_times(
-    #     "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
+    #     "data/results/merged_all_tlemmas_sequential/errors.json",
     #     [
-    #         "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
+    #         "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
+    #         "data/results/merged_all_tlemmas_sequential/randgen/data",
     #     ],
     # )
 
     # current_times, curr_tlemmas = get_current_results_times(
-    #     "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
+    #     "data/results/merged_all_tlemmas/errors.json",
     #     [
-    #         "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
+    #         "data/results/merged_all_tlemmas/ldd_randgen/data",
+    #         "data/results/merged_all_tlemmas/randgen/data",
     #     ],
     # )
 
     # x3_times, x3_tlemmas = get_current_results_times(
-    #     "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
+    #     "data/results/merged_all_tlemmas_projected/errors.json",
     #     [
-    #         "/home/ecivini/Projects/MSc/Thesis/Thesis/data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
+    #         "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
+    #         "data/results/merged_all_tlemmas_projected/randgen/data",
     #     ],
     # )
+
+    ###########################################################################
+    # PLANNING PROBLEMS
+    previous_times, prev_tlemmas = get_current_results_times(
+        "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
+        [
+            "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
+        ],
+    )
+
+    current_times, curr_tlemmas = get_current_results_times(
+        "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
+        [
+            "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
+        ],
+    )
+
+    x3_times, x3_tlemmas = get_current_results_times(
+        "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
+        [
+            "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
+        ],
+    )
 
     prev_problems = set(previous_times.keys())
     curr_problems = set(current_times.keys())
@@ -421,9 +449,9 @@ if __name__ == "__main__":
     assert prev_problems == x3_problems, "Problems don't match with x3_times"
 
     # create_bar_plot(previous_times, current_times)
-    solver_prev = "Sequential AllSMT"
-    solver_curr = "Parallel[45]"
-    solver_x3 = "Parallel[45] with projected T-atoms"
+    solver_prev = "Sequential"
+    solver_curr = "Parallel"
+    solver_x3 = "Parallel with Projection"
 
     # Scatter plots
     create_scatter_plot(
@@ -431,21 +459,21 @@ if __name__ == "__main__":
         current_times,
         x_label=solver_curr,
         y_label=solver_prev,
-        out_path="seq_vs_par45_tlemmas_gen_time.png",
+        out_path="seq_vs_par45_tlemmas_gen_time.pdf",
     )
     create_scatter_plot(
         previous_times,
         x3_times,
         x_label=solver_x3,
         y_label=solver_curr,
-        out_path="seq_vs_par45_proj_atoms_tlemmas_gen_time.png",
+        out_path="seq_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )
     create_scatter_plot(
         current_times,
         x3_times,
         x_label=solver_x3,
         y_label=solver_curr,
-        out_path="par45_vs_par45_proj_atoms_tlemmas_gen_time.png",
+        out_path="par45_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )
 
     create_tlemmas_scatter_plot(
@@ -453,7 +481,7 @@ if __name__ == "__main__":
         curr_tlemmas,
         solver_prev,
         solver_curr,
-        out_path="seq_vs_par45_tlemmas_num.png",
+        out_path="seq_vs_par45_tlemmas_num.pdf",
     )
 
     create_tlemmas_scatter_plot(
@@ -461,7 +489,7 @@ if __name__ == "__main__":
         x3_tlemmas,
         solver_prev,
         solver_x3,
-        out_path="seq_vs_par45_proj_atoms_tlemmas_num.png",
+        out_path="seq_vs_par45_proj_atoms_tlemmas_num.pdf",
     )
 
     create_tlemmas_scatter_plot(
@@ -469,7 +497,7 @@ if __name__ == "__main__":
         x3_tlemmas,
         solver_curr,
         solver_x3,
-        out_path="par45_vs_par45_proj_atoms_tlemmas_num.png",
+        out_path="par45_vs_par45_proj_atoms_tlemmas_num.pdf",
     )
 
     # Cactus plots
@@ -480,5 +508,5 @@ if __name__ == "__main__":
         x2_label=solver_curr,
         third=x3_times,
         x3_label=solver_x3,
-        out_path="cactus_seq_vs_par45_vs_par45_proj_atoms_tlemmas_gen_time.png",
+        out_path="cactus_seq_vs_par45_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )

@@ -2,6 +2,7 @@ from theorydd.solvers.solver import SMTEnumerator
 from theorydd.formula import get_normalized
 from pysmt.smtlib.parser import SmtLibParser
 from io import StringIO
+import pysmt
 
 import json
 
@@ -10,6 +11,7 @@ def load_mapping(
     normalizer_solver: SMTEnumerator, mapping_path: str
 ) -> tuple[dict, dict]:
     data = None
+    pysmt.environment.reset_env()
     with open(mapping_path, "r") as f:
         data = json.load(f)
 
@@ -22,6 +24,7 @@ def load_mapping(
     for record in data:
         script = parser.get_script(StringIO(record[1]))
         atom = script.get_last_formula()
+        pysmt.environment.reset_env()
         atom = get_normalized(atom, converter)
         abstraction[atom] = record[0]
         refinement[record[0]] = atom
