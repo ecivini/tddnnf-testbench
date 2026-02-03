@@ -1,6 +1,7 @@
 from theorydd.tddnnf.theory_ddnnf import TheoryDDNNF
 from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
 from theorydd.solvers.mathsat_partial_extended import MathSATExtendedPartialEnumerator
+from theorydd.solvers.with_partitioning import WithPartitioningWrapper
 from pysmt.shortcuts import read_smtlib
 
 import sys
@@ -50,6 +51,15 @@ def main():
             project_on_theory_atoms=project_tatoms,
             computation_logger=logger,
             parallel_procs=int(sys.argv[3]),
+        )
+    elif solver_name == "partition":
+        solver = WithPartitioningWrapper(
+            MathSATExtendedPartialEnumerator(
+                project_on_theory_atoms=project_tatoms,
+                computation_logger=logger,
+                parallel_procs=int(sys.argv[3]),
+            ),
+            computation_logger=logger,
         )
     else:
         raise ValueError("Invalid solver")

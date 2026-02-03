@@ -37,13 +37,13 @@ ALLOWED_TASKS = [
 TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
 
 TBDDS_RESULTS_BASE_PATHS = [
-    "data/michelutti_tdds/ldd_randgen/output_tbdd_total_new",
-    "data/michelutti_tdds/randgen/output_tbdd_total_new",
+    "data/results/tbdd_par_proj/tbdd_parallel_proj/data/serialized_tdds/ldd_randgen/data",
+    "data/results/tbdd_par_proj/tbdd_parallel_proj/data/serialized_tdds/randgen/data",
 ]
 
 TSDDS_RESULTS_BASE_PATHS = [
-    "data/michelutti_tdds/ldd_randgen/output_tsdd_total_new",
-    "data/michelutti_tdds/randgen/output_tsdd_total_new",
+    "data/results/tsdd_proj/tsdd_parallel_proj/data/serialized_tdds/ldd_randgen/data",
+    "data/results/tsdd_proj/tsdd_parallel_proj/data/serialized_tdds/randgen/data",
 ]
 
 ###############################################################################
@@ -415,11 +415,10 @@ def query_ce_task(data: dict) -> tuple:
     error_message = ""
     try:
         print(f"[+] [CE] Querying formula {data["formula_path"]}...")
-        mapping_path = os.path.dirname(data["nnf_path"])
-        mapping_path = os.path.join(mapping_path, "mapping", "mapping.json")
         command = (
             f"python3 scripts/tasks/query_ce_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["nnf_path"]} {mapping_path}"
+            f"{data["base_output_path"]} {data["nnf_path"]} {data["sdd_path"]} "
+            f"{data["bdd_path"]}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -449,6 +448,9 @@ def find_associated(
     if for_nnf:
         for key in map.keys():
             pieces = key.split("/")
+            # sanity
+            if "ldd_" in benchmark and "ldd_" not in key:
+                continue
             if pieces[-1] in benchmark:
                 return map[key]
     else:
@@ -472,8 +474,14 @@ def main():
 
     # Get solver type
     solver = "parallel"  # parallel by default
-    if len(sys.argv) >= 4 and sys.argv[3].lower().strip() == "sequential":
-        solver = "sequential"
+    if len(sys.argv) >= 4:
+        name = sys.argv[3].lower().strip()
+        if name == "sequential":
+            solver = "sequential"
+        elif name == "partition":
+            solver = "partition"
+        else:
+            raise ValueError("Unknown solver type")
 
     # Create output file
     base_path = config["results"]
@@ -536,6 +544,10 @@ def main():
             "task": selected_task,
         }
         datas.append(data)
+
+        # nnf_path = find_associated(test_case, computed_nnfs, for_nnf=True)
+        # print("PHI:", test_case)
+        # print("NNF:", nnf_path)
 
     task_fn = None
     if selected_task in [TASK_COMPILE, TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]:
