@@ -480,6 +480,8 @@ def main():
             solver = "sequential"
         elif name == "partition":
             solver = "partition"
+        elif name == "parallel":
+            solver = "parallel"
         else:
             raise ValueError("Unknown solver type")
 
