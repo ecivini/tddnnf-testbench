@@ -16,6 +16,7 @@ CONFIG_FILE = "config.yaml"
 
 TASK_TLEMMAS = "tlemmas"
 TASK_TLEMMAS_WITH_PROJECTION = "tlemmas_proj"
+TASK_TLEMMAS_CHECK = "tlemmas_check"
 TASK_COMPILE = "compile"
 TASK_TDDNNF = "tddnnfonly"
 TASK_QUERY = "query"
@@ -33,8 +34,9 @@ ALLOWED_TASKS = [
     TASK_TSDD,
     TASK_QUERY_MC,
     TASK_QUERY_CE,
+    TASK_TLEMMAS_CHECK,
 ]
-TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION]
+TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION, TASK_TLEMMAS_CHECK]
 
 TBDDS_RESULTS_BASE_PATHS = [
     "data/results/tbdd_par_proj/tbdd_parallel_proj/data/serialized_tdds/ldd_randgen/data",
@@ -440,6 +442,42 @@ def query_ce_task(data: dict) -> tuple:
         error_message = str(e)
 
     return compilation_succeeded, data["formula_path"], error_message
+
+
+def tlemmas_check_task(data: dict) -> tuple:
+    """
+    Checks the correctness of the generated tlemmas for a given set of formulas.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    test_succeeded = True
+    error_message = ""
+    try:
+        print(f"[+] Testing t-lemmas for formula {data["formula_path"]}...")
+        command = (
+            f"python3 scripts/tasks/tlemmas_check.py {data["formula_path"]} "
+            f"{data["base_output_path"]} {data["solver"]} {data["project_atoms"]} "
+            f"{data["tlemmas_path"]}"
+        )
+        command = command.split(" ")
+        return_code, error = run_with_timeout_and_kill_children(
+            command, data["timeout"], data["memory_limit"]
+        )
+        if return_code != 0:
+            print(f"[-] Error during tlemmas check of {data['formula_path']}:", error)
+            test_succeeded = False
+            error_message = error
+        else:
+            print(f"[+] Successfully checked {data['formula_path']}")
+    except subprocess.TimeoutExpired:
+        print(f"\t[-] Timeout during tlemmas check of {data['formula_path']}")
+        test_succeeded = False
+        error_message = "timeout"
+    except Exception as e:
+        print(f"[-] Exception during tlemmas check of {data['formula_path']}: {e}")
+        test_succeeded = False
+        error_message = str(e)
+
+    return test_succeeded, data["formula_path"], error_message
 
 
 def find_associated(
