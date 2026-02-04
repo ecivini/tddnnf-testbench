@@ -526,9 +526,9 @@ if __name__ == "__main__":
     assert prev_problems == x3_problems, "Problems don't match with x3_times"
 
     # create_bar_plot(previous_times, current_times)
-    solver_prev = "Sequential"
-    solver_curr = "Parallel"
-    solver_x3 = "Parallel with Projection"
+    solver_prev = "AllSMT"
+    solver_curr = "Divide and Conquer"
+    solver_x3 = "Projection"
 
     # Scatter plots
     create_scatter_plot(
@@ -602,7 +602,7 @@ if __name__ == "__main__":
         out_path="par45_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
     )
 
-    # Tlemmas average sizes
+    # Tlemmas median sizes
     create_tlemmas_scatter_plot(
         prev_median_tlemmas_sizes,
         current_median_tlemmas_sizes,
