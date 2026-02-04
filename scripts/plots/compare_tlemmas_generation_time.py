@@ -2,9 +2,13 @@ import json
 import os
 
 from pysmt.shortcuts import read_smtlib
+from pysmt.fnode import FNode
+import pysmt
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+import statistics
 
 PREVIOUS_RESULTS_PATHS = [
     # "data/michelutti_tdds/randgen/output_tddnnf_d4_total_new",
@@ -68,9 +72,14 @@ def get_previous_results_times() -> tuple[dict, dict]:
     return times, tlemmas
 
 
-def get_current_results_times(err_file: str, paths: list[str]) -> tuple[dict, dict]:
+def get_current_results_times(
+    err_file: str, paths: list[str]
+) -> tuple[dict, dict, dict, dict]:
     times = {}
     tlemmas = {}
+    avgs = {}
+    medians = {}
+    literals = {}
 
     with open(err_file, "r") as f:
         errors = json.load(f)
@@ -95,7 +104,61 @@ def get_current_results_times(err_file: str, paths: list[str]) -> tuple[dict, di
                 times[problem_name] = data["T-DDNNF"][PREVIOUS_RESULTS_TIME_KEY]
                 tlemmas[problem_name] = data["T-DDNNF"][CURRENT_RESULTS_TLEMMAS_NUM_KEY]
 
-    return times, tlemmas
+                # extracts stats from the lemmas
+                tlemmas_fnode = get_tlemmas_from_logs(file_path)
+                avg, med, lits = compute_tlemmas_stats(tlemmas_fnode)
+
+                avgs[problem_name] = avg
+                medians[problem_name] = med
+                literals[problem_name] = lits
+
+    return times, tlemmas, avgs, medians
+
+
+def get_all_or_children(formula):
+    if formula.is_or():
+        children = []
+        for arg in formula.args():
+            children.extend(get_all_or_children(arg))
+        return children
+    else:
+        return [formula]
+
+
+def compute_tlemmas_stats(tlemmas: list[FNode]) -> tuple[float, float, list]:
+    literals_num_list = []
+    for lemma in tlemmas:
+        # lemma is an or clause
+        lemma_size = len(get_all_or_children(lemma))
+        literals_num_list.append(lemma_size)
+
+    literals_num_list.sort()
+
+    avg_lemma_size = statistics.mean(literals_num_list)
+    median_lemma_size = statistics.median(literals_num_list)
+
+    return (avg_lemma_size, median_lemma_size, literals_num_list)
+
+
+def get_tlemmas_from_logs(logs_path: str) -> list[FNode]:
+    dir_name = os.path.dirname(logs_path)
+    files = [
+        os.path.join(dir_name, f)
+        for f in os.listdir(dir_name)
+        if f.endswith(".smt2") and os.path.isfile(os.path.join(dir_name, f))
+    ]
+    # there should be only one file
+    assert len(files) == 1
+    tlemmas_path = files[0]
+
+    pysmt.environment.reset_env()
+    tlemmas_and = read_smtlib(tlemmas_path)
+    if tlemmas_and.is_and():
+        return list(tlemmas_and.args())
+    elif tlemmas_and.is_or():
+        return [tlemmas_and]
+    else:
+        raise ValueError("Unexpected T-lemmas format")
 
 
 def create_bar_plot(previous: dict, current: dict):
@@ -315,6 +378,7 @@ def create_tlemmas_scatter_plot(
     prev_label: str,
     curr_label: str,
     out_path: str = "scatter_num.pdf",
+    log_scale: bool = True,
 ):
     previous_times = []
     current_times = []
@@ -359,13 +423,17 @@ def create_tlemmas_scatter_plot(
     # ax.axhline(timeout, linestyle="--", color="gray")
 
     # Set symlog scale
-    ax.set_xscale("symlog")  # , linthresh=linthresh)
-    ax.set_yscale("symlog")  # , linthresh=linthresh)
+    if log_scale:
+        ax.set_xscale("symlog")  # , linthresh=linthresh)
+        ax.set_yscale("symlog")  # , linthresh=linthresh)
+    else:
+        ax.set_xscale("linear")  # , linthresh=linthresh)
+        ax.set_yscale("linear")
     ax.set_aspect("equal")
 
     # Set limits
-    ax.set_xlim(left=1e-2, right=timeout * 1.1)
-    ax.set_ylim(bottom=1e-2, top=timeout * 1.1)
+    ax.set_xlim(left=1e-2, right=timeout * 1.2)
+    ax.set_ylim(bottom=1e-2, top=timeout * 1.2)
 
     # Labels
     ax.set_xlabel(f"{curr_label}", fontsize=24)
@@ -387,52 +455,61 @@ if __name__ == "__main__":
 
     ###########################################################################
     # RAND PROBLEMS
+    previous_times, prev_tlemmas, prev_avg_tlemmas_sizes, prev_median_tlemmas_sizes = (
+        get_current_results_times(
+            "data/results/merged_all_tlemmas_sequential/errors.json",
+            [
+                "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
+                "data/results/merged_all_tlemmas_sequential/randgen/data",
+            ],
+        )
+    )
+
+    (
+        current_times,
+        curr_tlemmas,
+        current_avg_tlemmas_sizes,
+        current_median_tlemmas_sizes,
+    ) = get_current_results_times(
+        "data/results/merged_all_tlemmas/errors.json",
+        [
+            "data/results/merged_all_tlemmas/ldd_randgen/data",
+            "data/results/merged_all_tlemmas/randgen/data",
+        ],
+    )
+
+    x3_times, x3_tlemmas, x3_avg_tlemmas_sizes, x3_median_tlemmas_sizes = (
+        get_current_results_times(
+            "data/results/merged_all_tlemmas_projected/errors.json",
+            [
+                "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
+                "data/results/merged_all_tlemmas_projected/randgen/data",
+            ],
+        )
+    )
+
+    ###########################################################################
+    # PLANNING PROBLEMS
     # previous_times, prev_tlemmas = get_current_results_times(
-    #     "data/results/merged_all_tlemmas_sequential/errors.json",
+    #     "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
     #     [
-    #         "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
-    #         "data/results/merged_all_tlemmas_sequential/randgen/data",
+    #         "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
     #     ],
     # )
 
     # current_times, curr_tlemmas = get_current_results_times(
-    #     "data/results/merged_all_tlemmas/errors.json",
+    #     "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
     #     [
-    #         "data/results/merged_all_tlemmas/ldd_randgen/data",
-    #         "data/results/merged_all_tlemmas/randgen/data",
+    #         "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
     #     ],
     # )
 
     # x3_times, x3_tlemmas = get_current_results_times(
-    #     "data/results/merged_all_tlemmas_projected/errors.json",
+    #     "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
     #     [
-    #         "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
-    #         "data/results/merged_all_tlemmas_projected/randgen/data",
+    #         "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
     #     ],
     # )
-
-    ###########################################################################
-    # PLANNING PROBLEMS
-    previous_times, prev_tlemmas = get_current_results_times(
-        "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
-        [
-            "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
-        ],
-    )
-
-    current_times, curr_tlemmas = get_current_results_times(
-        "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
-        [
-            "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
-        ],
-    )
-
-    x3_times, x3_tlemmas = get_current_results_times(
-        "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
-        [
-            "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
-        ],
-    )
 
     prev_problems = set(previous_times.keys())
     curr_problems = set(current_times.keys())
@@ -498,6 +575,59 @@ if __name__ == "__main__":
         solver_curr,
         solver_x3,
         out_path="par45_vs_par45_proj_atoms_tlemmas_num.pdf",
+    )
+
+    # Tlemmas average sizes
+    create_tlemmas_scatter_plot(
+        prev_avg_tlemmas_sizes,
+        current_avg_tlemmas_sizes,
+        solver_prev,
+        solver_curr,
+        out_path="seq_vs_par45_tlemmas_avg_size.pdf",
+    )
+
+    create_tlemmas_scatter_plot(
+        prev_avg_tlemmas_sizes,
+        x3_avg_tlemmas_sizes,
+        solver_prev,
+        solver_x3,
+        out_path="seq_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
+    )
+
+    create_tlemmas_scatter_plot(
+        current_avg_tlemmas_sizes,
+        x3_avg_tlemmas_sizes,
+        solver_curr,
+        solver_x3,
+        out_path="par45_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
+    )
+
+    # Tlemmas average sizes
+    create_tlemmas_scatter_plot(
+        prev_median_tlemmas_sizes,
+        current_median_tlemmas_sizes,
+        solver_prev,
+        solver_curr,
+        out_path="seq_vs_par45_tlemmas_median_size.pdf",
+        log_scale=False,
+    )
+
+    create_tlemmas_scatter_plot(
+        prev_median_tlemmas_sizes,
+        x3_median_tlemmas_sizes,
+        solver_prev,
+        solver_x3,
+        out_path="seq_vs_par45_proj_atoms_tlemmas_median_size.pdf",
+        log_scale=False,
+    )
+
+    create_tlemmas_scatter_plot(
+        current_median_tlemmas_sizes,
+        x3_median_tlemmas_sizes,
+        solver_curr,
+        solver_x3,
+        out_path="par45_vs_par45_proj_atoms_tlemmas_median_size.pdf",
+        log_scale=False,
     )
 
     # Cactus plots
