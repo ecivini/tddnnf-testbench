@@ -453,10 +453,13 @@ def tlemmas_check_task(data: dict) -> tuple:
     error_message = ""
     try:
         print(f"[+] Testing t-lemmas for formula {data["formula_path"]}...")
+        solver = "parallel" if data["solver"] == "partition" else solver
+        partition = "true" if data["solver"] == "partition" else "false"
+        print(data["base_output_path"])
         command = (
             f"python3 scripts/tasks/tlemmas_check.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["solver"]} {data["project_atoms"]} "
-            f"{data["tlemmas_path"]}"
+            f"{data["base_output_path"]} {solver} {data["project_atoms"]} "
+            f"{partition}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -600,6 +603,8 @@ def main():
         task_fn = query_mc_task
     elif selected_task == TASK_QUERY_CE:
         task_fn = query_ce_task
+    elif selected_task == TASK_TLEMMAS_CHECK:
+        task_fn = tlemmas_check_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
         sys.exit(1)

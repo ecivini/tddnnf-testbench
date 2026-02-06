@@ -238,7 +238,7 @@ def create_cactus_plot(
     x4 = np.arange(1, len(vbs_times) + 1)
 
     # Plot
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(6, 6))
     plt.plot(x1, previous_times, label=x1_label, marker="o", markersize=2)
     plt.plot(x2, current_times, label=x2_label, marker="^", markersize=2)
     if len(x3) > 0:
@@ -246,14 +246,16 @@ def create_cactus_plot(
     if show_vbs:
         plt.plot(x4, vbs_times, label="Virtual Best", marker="s", markersize=1)
 
-    plt.xlabel("Number of problems solved")
-    plt.ylabel("Time (s)")
+    plt.xlabel("Number of problems solved", fontsize=24)
+    plt.ylabel("Time (s)", fontsize=24)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
     # plt.title(
     #     f"{x1_label} vs {x2_label}"
     #     + (f" vs {x3_label}" if x3_label else "")
     # )
     plt.grid(True)
-    plt.legend()
+    plt.legend(fontsize=18)
     plt.tight_layout()
     plt.savefig(out_path)
 
@@ -578,29 +580,29 @@ if __name__ == "__main__":
     )
 
     # Tlemmas average sizes
-    create_tlemmas_scatter_plot(
-        prev_avg_tlemmas_sizes,
-        current_avg_tlemmas_sizes,
-        solver_prev,
-        solver_curr,
-        out_path="seq_vs_par45_tlemmas_avg_size.pdf",
-    )
+    # create_tlemmas_scatter_plot(
+    #     prev_avg_tlemmas_sizes,
+    #     current_avg_tlemmas_sizes,
+    #     solver_prev,
+    #     solver_curr,
+    #     out_path="seq_vs_par45_tlemmas_avg_size.pdf",
+    # )
 
-    create_tlemmas_scatter_plot(
-        prev_avg_tlemmas_sizes,
-        x3_avg_tlemmas_sizes,
-        solver_prev,
-        solver_x3,
-        out_path="seq_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
-    )
+    # create_tlemmas_scatter_plot(
+    #     prev_avg_tlemmas_sizes,
+    #     x3_avg_tlemmas_sizes,
+    #     solver_prev,
+    #     solver_x3,
+    #     out_path="seq_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
+    # )
 
-    create_tlemmas_scatter_plot(
-        current_avg_tlemmas_sizes,
-        x3_avg_tlemmas_sizes,
-        solver_curr,
-        solver_x3,
-        out_path="par45_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
-    )
+    # create_tlemmas_scatter_plot(
+    #     current_avg_tlemmas_sizes,
+    #     x3_avg_tlemmas_sizes,
+    #     solver_curr,
+    #     solver_x3,
+    #     out_path="par45_vs_par45_proj_atoms_tlemmas_avg_size.pdf",
+    # )
 
     # Tlemmas median sizes
     create_tlemmas_scatter_plot(
