@@ -73,7 +73,7 @@ def get_previous_results_times() -> tuple[dict, dict]:
 
 
 def get_current_results_times(
-    err_file: str, paths: list[str]
+    err_file: str | None, paths: list[str]
 ) -> tuple[dict, dict, dict, dict]:
     times = {}
     tlemmas = {}
@@ -81,14 +81,15 @@ def get_current_results_times(
     medians = {}
     literals = {}
 
-    with open(err_file, "r") as f:
-        errors = json.load(f)
-        for problem, reason in errors.items():
-            if reason == "timeout":
-                key_name = problem.split(os.sep)[-1].replace(".smt2", "")
-                times[key_name] = DEFAULT_TIMEOUT
-            else:
-                print("Error reason:", reason)
+    if err_file:
+        with open(err_file, "r") as f:
+            errors = json.load(f)
+            for problem, reason in errors.items():
+                if reason == "timeout":
+                    key_name = problem.split(os.sep)[-1].replace(".smt2", "")
+                    times[key_name] = DEFAULT_TIMEOUT
+                else:
+                    print("Error reason:", reason)
 
     for base_dir in paths:
         for root, _, files in os.walk(base_dir):
@@ -194,12 +195,15 @@ def create_cactus_plot(
     x2_label: str,
     third: dict | None = None,  # Eventual third solver data
     x3_label: str | None = None,  # Eventual third solver label
+    fourth: dict | None = None,
+    x4_label: str | None = None,
     show_vbs: bool = False,
     out_path: str = "cactus.pdf",
 ) -> None:
     previous_times = []
     current_times = []
     third_times = []
+    fourth_times = []
     vbs_times = []
     for problem in current:
         prev_time = (
@@ -217,25 +221,40 @@ def create_cactus_plot(
                 third[problem] if third[problem] <= DEFAULT_TIMEOUT else DEFAULT_TIMEOUT
             )
 
+        fourth_time = None
+        if fourth is not None:
+            fourth_time = (
+                fourth[problem]
+                if fourth[problem] <= DEFAULT_TIMEOUT
+                else DEFAULT_TIMEOUT
+            )
+
         vbs_time = min(prev_time, current_time)
         if third_time:
             vbs_time = min(vbs_time, third_time)
+        if fourth_time:
+            vbs_time = min(vbs_time, fourth_time)
 
         previous_times.append(prev_time)
         current_times.append(current_time)
         if third_time:
             third_times.append(third_time)
+        if fourth_time:
+            fourth_times.append(fourth_time)
+
         vbs_times.append(vbs_time)
 
     previous_times.sort()
     current_times.sort()
     third_times.sort()
+    fourth_times.sort()
     vbs_times.sort()
 
     x1 = np.arange(1, len(previous_times) + 1)
     x2 = np.arange(1, len(current_times) + 1)
     x3 = np.arange(1, len(third_times) + 1)
-    x4 = np.arange(1, len(vbs_times) + 1)
+    x4 = np.arange(1, len(fourth_times) + 1)
+    x5 = np.arange(1, len(vbs_times) + 1)
 
     # Plot
     plt.figure(figsize=(6, 6))
@@ -243,8 +262,10 @@ def create_cactus_plot(
     plt.plot(x2, current_times, label=x2_label, marker="^", markersize=2)
     if len(x3) > 0:
         plt.plot(x3, third_times, label=x3_label, marker="+", markersize=2)
+    if len(x4) > 0:
+        plt.plot(x4, fourth_times, label=x3_label, marker="+", markersize=2)
     if show_vbs:
-        plt.plot(x4, vbs_times, label="Virtual Best", marker="s", markersize=1)
+        plt.plot(x5, vbs_times, label="Virtual Best", marker="s", markersize=1)
 
     plt.xlabel("Number of problems solved", fontsize=24)
     plt.ylabel("Time (s)", fontsize=24)
@@ -392,6 +413,10 @@ def create_tlemmas_scatter_plot(
         previous_times.append(previous[problem])
         current_times.append(current[problem])
 
+    if not previous_times or not current_times:
+        print("No data for plot:", out_path)
+        return
+
     timeout = max(max(previous_times), max(current_times))
     linthresh = None  # Linear region until 1
 
@@ -457,12 +482,87 @@ if __name__ == "__main__":
 
     ###########################################################################
     # RAND PROBLEMS
+    # previous_times, prev_tlemmas, prev_avg_tlemmas_sizes, prev_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/merged_all_tlemmas_sequential/errors.json",
+    #         [
+    #             "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
+    #             "data/results/merged_all_tlemmas_sequential/randgen/data",
+    #         ],
+    #     )
+    # )
+
+    # (
+    #     current_times,
+    #     curr_tlemmas,
+    #     current_avg_tlemmas_sizes,
+    #     current_median_tlemmas_sizes,
+    # ) = get_current_results_times(
+    #     "data/results/merged_all_tlemmas/errors.json",
+    #     [
+    #         "data/results/merged_all_tlemmas/ldd_randgen/data",
+    #         "data/results/merged_all_tlemmas/randgen/data",
+    #     ],
+    # )
+
+    # x3_times, x3_tlemmas, x3_avg_tlemmas_sizes, x3_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/merged_all_tlemmas_projected/errors.json",
+    #         [
+    #             "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
+    #             "data/results/merged_all_tlemmas_projected/randgen/data",
+    #         ],
+    #     )
+    # )
+
+    ###########################################################################
+    # PLANNING H3 PROBLEMS
+    # previous_times, prev_tlemmas, prev_avg_tlemmas_sizes, prev_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
+    #         [
+    #             "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
+    #         ],
+    #     )
+    # )
+
+    # (
+    #     current_times,
+    #     curr_tlemmas,
+    #     current_avg_tlemmas_sizes,
+    #     current_median_tlemmas_sizes,
+    # ) = get_current_results_times(
+    #     "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
+    #     [
+    #         "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
+    #     ],
+    # )
+
+    # x3_times, x3_tlemmas, x3_avg_tlemmas_sizes, x3_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
+    #         [
+    #             "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
+    #         ],
+    #     )
+    # )
+
+    # x4_times, x4_tlemmas, x4_avg_tlemmas_sizes, x4_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         None,  # "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/errors.json",
+    #         [
+    #             "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/data/benchmark/planning/h3/Painter",  # noqa
+    #         ],
+    #     )
+    # )
+
+    ###########################################################################
+    # PLANNING H4 PROBLEMS
     previous_times, prev_tlemmas, prev_avg_tlemmas_sizes, prev_median_tlemmas_sizes = (
         get_current_results_times(
-            "data/results/merged_all_tlemmas_sequential/errors.json",
+            "data/results/planning_h4_seq/errors.json",
             [
-                "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
-                "data/results/merged_all_tlemmas_sequential/randgen/data",
+                "data/results/planning_h4_seq/data/benchmark/planning/h4/Painter",  # noqa
             ],
         )
     )
@@ -473,45 +573,29 @@ if __name__ == "__main__":
         current_avg_tlemmas_sizes,
         current_median_tlemmas_sizes,
     ) = get_current_results_times(
-        "data/results/merged_all_tlemmas/errors.json",
+        "data/results/planning_h4_par/errors.json",
         [
-            "data/results/merged_all_tlemmas/ldd_randgen/data",
-            "data/results/merged_all_tlemmas/randgen/data",
+            "data/results/planning_h4_par/data/benchmark/planning/h4/Painter",  # noqa
         ],
     )
 
     x3_times, x3_tlemmas, x3_avg_tlemmas_sizes, x3_median_tlemmas_sizes = (
         get_current_results_times(
-            "data/results/merged_all_tlemmas_projected/errors.json",
+            "data/results/planning_h4_proj/errors.json",
             [
-                "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
-                "data/results/merged_all_tlemmas_projected/randgen/data",
+                "data/results/planning_h4_proj/data/benchmark/planning/h4/Painter",  # noqa
             ],
         )
     )
 
-    ###########################################################################
-    # PLANNING PROBLEMS
-    # previous_times, prev_tlemmas = get_current_results_times(
-    #     "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
-    #     [
-    #         "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
-    #     ],
-    # )
-
-    # current_times, curr_tlemmas = get_current_results_times(
-    #     "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
-    #     [
-    #         "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
-    #     ],
-    # )
-
-    # x3_times, x3_tlemmas = get_current_results_times(
-    #     "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
-    #     [
-    #         "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
-    #     ],
-    # )
+    x4_times, x4_tlemmas, x4_avg_tlemmas_sizes, x4_median_tlemmas_sizes = (
+        get_current_results_times(
+            None,  # "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/errors.json",
+            [
+                "data/results/planning_h4_proj_with_partitioning/data/benchmark/planning/h4/Painter",  # noqa
+            ],
+        )
+    )
 
     prev_problems = set(previous_times.keys())
     curr_problems = set(current_times.keys())
@@ -531,6 +615,7 @@ if __name__ == "__main__":
     solver_prev = "AllSMT"
     solver_curr = "Divide and Conquer"
     solver_x3 = "Projection"
+    solver_x4 = "Partitioning"
 
     # Scatter plots
     create_scatter_plot(
@@ -542,10 +627,10 @@ if __name__ == "__main__":
     )
     create_scatter_plot(
         previous_times,
-        x3_times,
-        x_label=solver_x3,
+        x4_times,
+        x_label=solver_x4,
         y_label=solver_curr,
-        out_path="seq_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
+        out_path="seq_vs_partition_tlemmas_gen_time.pdf",
     )
     create_scatter_plot(
         current_times,
@@ -554,7 +639,15 @@ if __name__ == "__main__":
         y_label=solver_curr,
         out_path="par45_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )
+    create_scatter_plot(
+        x3_times,
+        x4_times,
+        x_label=solver_x4,
+        y_label=solver_x3,
+        out_path="par45_proj_vs_partition_tlemmas_gen_time.pdf",
+    )
 
+    # T-lemmas number
     create_tlemmas_scatter_plot(
         prev_tlemmas,
         curr_tlemmas,
@@ -565,10 +658,10 @@ if __name__ == "__main__":
 
     create_tlemmas_scatter_plot(
         prev_tlemmas,
-        x3_tlemmas,
+        x4_tlemmas,
         solver_prev,
-        solver_x3,
-        out_path="seq_vs_par45_proj_atoms_tlemmas_num.pdf",
+        solver_x4,
+        out_path="seq_vs_partition_tlemmas_num.pdf",
     )
 
     create_tlemmas_scatter_plot(
@@ -577,6 +670,14 @@ if __name__ == "__main__":
         solver_curr,
         solver_x3,
         out_path="par45_vs_par45_proj_atoms_tlemmas_num.pdf",
+    )
+
+    create_tlemmas_scatter_plot(
+        x3_tlemmas,
+        x4_tlemmas,
+        solver_x3,
+        solver_x4,
+        out_path="par45_proj_vs_partition_tlemmas_num.pdf",
     )
 
     # Tlemmas average sizes
@@ -616,10 +717,10 @@ if __name__ == "__main__":
 
     create_tlemmas_scatter_plot(
         prev_median_tlemmas_sizes,
-        x3_median_tlemmas_sizes,
+        x4_median_tlemmas_sizes,
         solver_prev,
-        solver_x3,
-        out_path="seq_vs_par45_proj_atoms_tlemmas_median_size.pdf",
+        solver_x4,
+        out_path="seq_vs_partition_tlemmas_median_size.pdf",
         log_scale=False,
     )
 
@@ -632,6 +733,15 @@ if __name__ == "__main__":
         log_scale=False,
     )
 
+    create_tlemmas_scatter_plot(
+        x3_median_tlemmas_sizes,
+        x4_median_tlemmas_sizes,
+        solver_x3,
+        solver_x4,
+        out_path="par45_proj_vs_partition_tlemmas_median_size.pdf",
+        log_scale=False,
+    )
+
     # Cactus plots
     create_cactus_plot(
         previous_times,
@@ -640,5 +750,7 @@ if __name__ == "__main__":
         x2_label=solver_curr,
         third=x3_times,
         x3_label=solver_x3,
-        out_path="cactus_seq_vs_par45_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
+        fourth=x4_times,
+        x4_label=solver_x4,
+        out_path="cactus_seq_vs_par45_vs_par45_proj_atoms_vs_partition_tlemmas_gen_time.pdf",
     )

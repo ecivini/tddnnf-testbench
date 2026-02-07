@@ -455,7 +455,6 @@ def tlemmas_check_task(data: dict) -> tuple:
         print(f"[+] Testing t-lemmas for formula {data["formula_path"]}...")
         solver = "parallel" if data["solver"] == "partition" else solver
         partition = "true" if data["solver"] == "partition" else "false"
-        print(data["base_output_path"])
         command = (
             f"python3 scripts/tasks/tlemmas_check.py {data["formula_path"]} "
             f"{data["base_output_path"]} {solver} {data["project_atoms"]} "
