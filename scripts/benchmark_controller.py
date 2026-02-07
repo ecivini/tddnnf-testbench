@@ -455,10 +455,11 @@ def tlemmas_check_task(data: dict) -> tuple:
         print(f"[+] Testing t-lemmas for formula {data['formula_path']}...")
         solver = "parallel" if data["solver"] == "partition" else solver
         partition = "true" if data["solver"] == "partition" else "false"
+        projection = "true" if data["solver"] == "partition" else "false"
         command = (
             f"python3 scripts/tasks/tlemmas_check.py {data['formula_path']} "
-            f"{data['base_output_path']} {solver} {data['project_atoms']} "
-            f"{partition}"
+            f"{data['base_output_path']} {solver} {projection} "
+            f"{partition} {data['tlemmas_path']} {data['gt_tlemmas_path']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -549,6 +550,7 @@ def main():
         TASK_TSDD,
         TASK_QUERY_MC,
         TASK_QUERY_CE,
+        TASK_TLEMMAS_CHECK,
     ]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
@@ -584,6 +586,7 @@ def main():
             "bdd_path": find_associated(test_case, computed_bdds, for_nnf=True),
             "sdd_path": find_associated(test_case, computed_sdds, for_nnf=True),
             "task": selected_task,
+            "gt_tlemmas_path": config["gt_tlemmas_dir"],
         }
         datas.append(data)
 

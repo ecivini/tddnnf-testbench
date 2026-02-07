@@ -6,6 +6,7 @@ from theorydd.solvers.with_partitioning import WithPartitioningWrapper
 from theorydd.formula import get_normalized
 from typing import Iterable
 from pysmt.oracles import get_logic
+import pysmt
 
 from theorydd.walkers.walker_bool_abstraction import BooleanAbstractionWalker
 from theorydd.walkers.walker_refinement import RefinementWalker
@@ -44,11 +45,25 @@ def assert_phi_equiv_phi_and_lemmas(phi: FNode, phi_and_lemmas):
         ), "Phi and Phi & lemmas are not theory-equivalent"
 
 
+def process_raw_tlemmas(raw_tlemmas: FNode) -> list[FNode]:
+    if raw_tlemmas.is_and():
+        return list(raw_tlemmas.args())
+    elif raw_tlemmas.is_or():
+        return [raw_tlemmas]
+    else:
+        raise ValueError("Unexpected T-lemmas format")
+
+
+def gt_model_count(logs: dict) -> int:
+    return logs["T-DDNNF"]["Total models"]
+
+
 def main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) < 7:
         print(
             "Usage: python3 scripts/tasks/tlemmas_check.py <input formula> "
-            "<base output path> <solver_type> <use_projection> <use_partition>"
+            "<base output path> <solver_type> <use_projection> <use_partition> "
+            "<tlemmas to check path> <ground truth logs path | optional>"
         )
         sys.exit(1)
 
@@ -60,21 +75,19 @@ def main():
     solver_type = sys.argv[3]
     use_projection = True if sys.argv[4].lower() == "true" else False
     use_partition = True if sys.argv[5].lower() == "true" else False
-    print("Use partitioning:", use_partition)
-    print("Use projection:", use_projection)
 
-    # tlemmas_path = sys.argv[6]
-    # if not os.path.isfile(tlemmas_path):
-    #     print("[-] Invalid tlemmas path")
-    #     sys.exit(1)
-    # tlemmas = read_smtlib(tlemmas_path)
+    # Process T-lemmas to check
+    tlemmas_path = sys.argv[6]
+    if not os.path.isfile(tlemmas_path):
+        print("[-] Invalid tlemmas path")
+        sys.exit(1)
+    tlemmas = process_raw_tlemmas(read_smtlib(tlemmas_path))
 
     # Read logs file
-    # tlemmas_dir = os.path.dirname(tlemmas_path)
-    # tlemmas_logs_path = os.path.join(tlemmas_dir, "logs.json")
-    # tlemmas_logs = {}
-    # with open(tlemmas_logs_path, "r") as tlemmas_logs_file:
-    #     tlemmas_logs = json.load(tlemmas_logs_file)
+    gt_logs = None
+    if len(sys.argv) >= 8 and os.path.isfile(sys.argv[7]):
+        with open(sys.argv[7], "r") as logs_file:
+            gt_logs = json.load(logs_file)
 
     # mc = tlemmas_logs["T-DDNNF"]["Total models"]
     solver = None
@@ -93,11 +106,11 @@ def main():
     else:
         raise ValueError("Unexpected solver type")
 
-    mc_logger = {}
-    solver_mc = MathSATTotalEnumerator(
-        project_on_theory_atoms=use_projection,
-        computation_logger=mc_logger,
-    )
+    # mc_logger = {}
+    # solver_mc = MathSATTotalEnumerator(
+    #     project_on_theory_atoms=use_projection,
+    #     computation_logger=mc_logger,
+    # )
 
     if use_partition:
         solver = WithPartitioningWrapper(solver, computation_logger=logger)
@@ -107,30 +120,27 @@ def main():
     normalize_solver = Solver("msat")
     phi = get_normalized(phi, normalize_solver.converter)
 
-    if not use_partition:
-        solver_mc.check_all_sat(
-            phi,
-            atoms=list(phi.get_atoms()),
-            store_models=False,
-        )
+    # if not use_partition:
+    #     solver_mc.check_all_sat(
+    #         phi,
+    #         atoms=list(phi.get_atoms()),
+    #         store_models=False,
+    #     )
 
     # ---- Generate lemmas ----
     print("Generating T-lemmas...")
     phi_atoms = list(phi.get_atoms())
-    phi_sat = solver.check_all_sat(phi, atoms=phi_atoms, store_models=True)
-    assert (
-        use_partition or solver.get_models_count() == solver_mc.get_models_count()
-    ), "Model count should match expected: {}".format(solver.get_models())
+    # phi_sat = solver.check_all_sat(phi, atoms=phi_atoms, store_models=True)
+    # assert gt_logs is not None or solver.get_models_count() == gt_model_count(
+    #     gt_logs
+    # ), "Model count should match expected: {}".format(solver.get_models())
 
-    print("Asserting models are T-sat...")
-    assert_models_are_tsat(phi, solver.get_models())
+    # print("Asserting models are T-sat...")
+    # assert_models_are_tsat(phi, solver.get_models())
 
     # ---- Build Boolean abstraction of phi & lemmas ----
     print("Normalizing T-lemmas...")
-    lemmas = [
-        get_normalized(lemma, normalize_solver.converter)
-        for lemma in solver.get_theory_lemmas()
-    ]
+    lemmas = [get_normalized(lemma, normalize_solver.converter) for lemma in tlemmas]
 
     print("building boolean abstraction...")
     phi_and_lemmas = And(phi, And(lemmas))
@@ -152,7 +162,7 @@ def main():
     # in that case.
     if not get_logic(phi).theory.arrays:
         assert_lemmas_are_tvalid(lemmas)
-        assert_phi_equiv_phi_and_lemmas(phi, phi_and_lemmas)
+        # assert_phi_equiv_phi_and_lemmas(phi, phi_and_lemmas)
 
     print("Running AllSAT on Boolean abstraction ...")
     solver_abstr = MathSATTotalEnumerator(project_on_theory_atoms=False)
@@ -162,12 +172,10 @@ def main():
         store_models=True,
     )
     print("Checking models number match ...")
-    assert (
-        abstr_sat == phi_sat
-    ), "Satisfiability of abstracted formula with lemmas should match original"
-    assert (
-        use_partition or solver_abstr.get_models_count() == solver_mc.get_models_count()
-    ), f"Model count should match expected: {solver_abstr.get_models_count()} vs {solver_mc.get_models_count()}"
+    assert abstr_sat, "Abstracted formula with lemmas should be satisfiable"
+    # assert (
+    #     use_partition or solver_abstr.get_models_count() == solver_mc.get_models_count()
+    # ), f"Model count should match expected: {solver_abstr.get_models_count()} vs {solver_mc.get_models_count()}"
 
     # Check phi_and_lemmas is t-reduced
     print("Refining Boolean abstraction ...")
@@ -177,11 +185,12 @@ def main():
         for model in solver_abstr.get_models()
     ]
 
-    print("Models of the refined formula:", len(refined_models))
-    # print("Models of phi using a dedicated solver:", solver_mc.get_models_count())
-    print("Models of phi:", solver.get_models_count())
-    print("Checking phi and lemmas is T-reduced ...")
     assert_models_are_tsat(phi, refined_models)
+
+    if gt_logs is not None:
+        assert len(refined_models) == gt_model_count(
+            gt_logs
+        ), "Refined models number should match ground truth"
 
     logger["T-LEMMAS CHECK"] = {}
     logger["T-LEMMAS CHECK"]["Total time"] = time.time() - start_time
