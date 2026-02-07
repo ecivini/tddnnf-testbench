@@ -232,11 +232,11 @@ def compile_task(data: dict) -> tuple:
     compilation_succeeded = True
     error_message = ""
     try:
-        print(f"[+] Compiling formula {data["formula_path"]}...")
+        print(f"[+] Compiling formula {data['formula_path']}...")
         command = (
-            f"python3 scripts/tasks/compile_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["allsmt_processes"]} {data["generate_tlemmas_only"]} "
-            f"{data["solver"]} {data["project_atoms"]}"
+            f"python3 scripts/tasks/compile_task.py {data['formula_path']} "
+            f"{data['base_output_path']} {data['allsmt_processes']} {data['generate_tlemmas_only']} "
+            f"{data['solver']} {data['project_atoms']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -271,10 +271,10 @@ def tddnnf_task(data: dict) -> tuple:
     compilation_succeeded = True
     error_message = ""
     try:
-        print(f"[+] Compiling formula {data["formula_path"]}...")
+        print(f"[+] Compiling formula {data['formula_path']}...")
         command = (
-            f"python3 scripts/tasks/tddnnf_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["tlemmas_path"]}"
+            f"python3 scripts/tasks/tddnnf_task.py {data['formula_path']} "
+            f"{data['base_output_path']} {data['tlemmas_path']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -321,10 +321,10 @@ def dd_task(data: dict) -> tuple:
     compilation_succeeded = True
     error_message = ""
     try:
-        print(f"[+] Compiling {dd_type} of {data["formula_path"]}...")
+        print(f"[+] Compiling {dd_type} of {data['formula_path']}...")
         command = (
-            f"python3 scripts/tasks/{task_file} {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["tlemmas_path"]}"
+            f"python3 scripts/tasks/{task_file} {data['formula_path']} "
+            f"{data['base_output_path']} {data['tlemmas_path']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -368,11 +368,11 @@ def query_mc_task(data: dict) -> tuple:
     compilation_succeeded = True
     error_message = ""
     try:
-        print(f"[+] [MC] Querying formula {data["formula_path"]}...")
+        print(f"[+] [MC] Querying formula {data['formula_path']}...")
         command = (
-            f"python3 scripts/tasks/query_mc_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["nnf_path"]} {data["tlemmas_path"]} "
-            f"{data["bdd_path"]} {data["sdd_path"]}"
+            f"python3 scripts/tasks/query_mc_task.py {data['formula_path']} "
+            f"{data['base_output_path']} {data['nnf_path']} {data['tlemmas_path']} "
+            f"{data['bdd_path']} {data['sdd_path']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -416,11 +416,11 @@ def query_ce_task(data: dict) -> tuple:
     compilation_succeeded = True
     error_message = ""
     try:
-        print(f"[+] [CE] Querying formula {data["formula_path"]}...")
+        print(f"[+] [CE] Querying formula {data['formula_path']}...")
         command = (
-            f"python3 scripts/tasks/query_ce_task.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {data["nnf_path"]} {data["sdd_path"]} "
-            f"{data["bdd_path"]}"
+            f"python3 scripts/tasks/query_ce_task.py {data['formula_path']} "
+            f"{data['base_output_path']} {data['nnf_path']} {data['sdd_path']} "
+            f"{data['bdd_path']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -452,12 +452,12 @@ def tlemmas_check_task(data: dict) -> tuple:
     test_succeeded = True
     error_message = ""
     try:
-        print(f"[+] Testing t-lemmas for formula {data["formula_path"]}...")
+        print(f"[+] Testing t-lemmas for formula {data['formula_path']}...")
         solver = "parallel" if data["solver"] == "partition" else solver
         partition = "true" if data["solver"] == "partition" else "false"
         command = (
-            f"python3 scripts/tasks/tlemmas_check.py {data["formula_path"]} "
-            f"{data["base_output_path"]} {solver} {data["project_atoms"]} "
+            f"python3 scripts/tasks/tlemmas_check.py {data['formula_path']} "
+            f"{data['base_output_path']} {solver} {data['project_atoms']} "
             f"{partition}"
         )
         command = command.split(" ")
