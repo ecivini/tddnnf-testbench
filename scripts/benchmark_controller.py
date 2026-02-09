@@ -204,6 +204,7 @@ def run_with_timeout_and_kill_children(
         preexec_fn=set_memory_limit(memory_limit),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=os.environ.copy(),
     )
     try:
         proc.wait(timeout=timeout + 2)

@@ -63,8 +63,7 @@ def main():
 
     tabularallsat_path = os.getenv("TABULARALLSAT_PATH")
     if tabularallsat_path is None:
-        print("[-] TABULARALLSAT_PATH environment variable not set")
-        sys.exit(1)
+        raise ValueError("TABULARALLSAT_PATH environment variable not set")
 
     # Check base output path exists, otherwise create it
     if not os.path.exists(sys.argv[2]):
