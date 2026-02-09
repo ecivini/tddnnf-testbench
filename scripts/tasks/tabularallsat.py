@@ -4,7 +4,7 @@ from typing import Callable, Iterator
 
 import numpy as np
 from allsat_cnf.label_cnfizer import LabelCNFizer
-from allsat_cnf.utils import SolverOptions, is_cnf
+from allsat_cnf.utils import is_cnf
 from pysmt.fnode import FNode
 
 from scripts.tasks.dimacs import DimacsInterface, read_models as read_models_cython
