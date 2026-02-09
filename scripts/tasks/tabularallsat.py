@@ -8,7 +8,7 @@ from allsat_cnf.label_cnfizer import LabelCNFizer
 from allsat_cnf.utils import is_cnf
 from pysmt.fnode import FNode
 
-from scripts.tasks.dimacs import DimacsInterface, read_models as read_models_cython
+from dimacs import DimacsInterface, read_models as read_models_cython
 
 
 def _run_cmd(cmd: list[str], cwd: str) -> None:
@@ -33,12 +33,15 @@ class TabularAllSATInterface:
     def __init__(self, ta_bin: str):
         # check that the binary exists and is executable
         if not (os.path.isfile(ta_bin) and os.access(ta_bin, os.X_OK)):
-            raise ValueError(f"TabularAllSAT binary not found or not executable: {ta_bin}")
+            raise ValueError(
+                f"TabularAllSAT binary not found or not executable: {ta_bin}"
+            )
 
         self.ta_bin = ta_bin
 
-    def projected_allsat(self, formula: FNode, projected_vars: list[FNode], total: bool = True) -> Iterator[
-        dict[FNode, bool]]:
+    def projected_allsat(
+        self, formula: FNode, projected_vars: list[FNode], total: bool = True
+    ) -> Iterator[dict[FNode, bool]]:
         """
         Enumerates projected models using TabularAllSAT.
 
@@ -67,7 +70,9 @@ class TabularAllSATInterface:
             formula = LabelCNFizer().convert_as_formula(formula)
         yield from self._invoke_solver(formula, projected_vars, total)
 
-    def _invoke_solver(self, formula: FNode, projected_vars: list[FNode], total: bool) -> Iterator[dict[FNode, bool]]:
+    def _invoke_solver(
+        self, formula: FNode, projected_vars: list[FNode], total: bool
+    ) -> Iterator[dict[FNode, bool]]:
         with TemporaryDirectory(delete=True) as tmpdir:
             dimacs_file = f"{tmpdir}/input.dimacs"
 
@@ -81,11 +86,15 @@ class TabularAllSATInterface:
             cmd += [dimacs_file]
             _run_cmd(cmd, tmpdir)
 
-            yield from self._read_models(f"{tmpdir}/output.txt", dimacs.int_list_to_model)
+            yield from self._read_models(
+                f"{tmpdir}/output.txt", dimacs.int_list_to_model
+            )
 
     @staticmethod
-    def _read_models(model_file: str, int_list_to_model: Callable[[np.ndarray], tuple[np.ndarray, np.ndarray]]) -> \
-            Iterator[dict[FNode, bool]]:
+    def _read_models(
+        model_file: str,
+        int_list_to_model: Callable[[np.ndarray], tuple[np.ndarray, np.ndarray]],
+    ) -> Iterator[dict[FNode, bool]]:
         yield from read_models_cython(model_file, int_list_to_model)
 
 
