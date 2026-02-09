@@ -1,3 +1,4 @@
+import os
 import subprocess
 from tempfile import TemporaryDirectory
 from typing import Callable, Iterator
@@ -30,6 +31,10 @@ class TabularAllSATInterface:
     """Adapter for TabularAllSAT"""
 
     def __init__(self, ta_bin: str):
+        # check that the binary exists and is executable
+        if not (os.path.isfile(ta_bin) and os.access(ta_bin, os.X_OK)):
+            raise ValueError(f"TabularAllSAT binary not found or not executable: {ta_bin}")
+
         self.ta_bin = ta_bin
 
     def projected_allsat(self, formula: FNode, projected_vars: list[FNode], total: bool = True) -> Iterator[
