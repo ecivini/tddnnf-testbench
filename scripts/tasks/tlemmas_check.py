@@ -6,7 +6,7 @@ from typing import Iterable
 
 from pysmt.fnode import FNode
 from pysmt.oracles import get_logic
-from pysmt.shortcuts import And, Iff, Solver, read_smtlib
+from pysmt.shortcuts import And, Iff, Not, Solver, read_smtlib
 from theorydd.formula import get_normalized
 from theorydd.walkers.walker_bool_abstraction import BooleanAbstractionWalker
 from theorydd.walkers.walker_refinement import RefinementWalker
@@ -54,7 +54,7 @@ def gt_model_count(logs: dict) -> int:
 
 
 def main():
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 4:
         print(
             "Usage: python3 scripts/tasks/tlemmas_check.py <input formula> "
             "<base output path> <tlemmas to check path> <ground truth logs path | optional>"
@@ -130,7 +130,10 @@ def main():
     theory_atoms_abstr = [bool_walker.walk(atom) for atom in theory_atoms]
     refinement_walker = RefinementWalker(abstraction=bool_walker.abstraction)
     refined_models = [
-        [refinement_walker.walk(lit) for lit in model]
+        [
+            refinement_walker.walk(lit)
+            for lit in map(lambda atom, value: atom if value else Not(atom), model.items())
+        ]
         for model in solver_abstr.projected_allsat(phi_and_lemmas_abstr, theory_atoms_abstr, total=True)
     ]
 
