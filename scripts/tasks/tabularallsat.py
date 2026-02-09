@@ -63,7 +63,7 @@ class TabularAllSATInterface:
         yield from self._invoke_solver(formula, projected_vars, total)
 
     def _invoke_solver(self, formula: FNode, projected_vars: list[FNode], total: bool) -> Iterator[dict[FNode, bool]]:
-        with TemporaryDirectory(delete=False) as tmpdir:
+        with TemporaryDirectory(delete=True) as tmpdir:
             dimacs_file = f"{tmpdir}/input.dimacs"
 
             dimacs = DimacsInterface()
