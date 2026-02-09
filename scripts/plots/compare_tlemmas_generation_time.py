@@ -391,6 +391,8 @@ def create_scatter_plot(
     # Labels
     ax.set_xlabel(f"{x_label} times", fontsize=24)
     ax.set_ylabel(f"{y_label} times", fontsize=24)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
 
     # Grid
     ax.grid(True, which="both", linestyle=":", linewidth=0.5)
@@ -479,6 +481,8 @@ def create_tlemmas_scatter_plot(
 
     # Legend
     # ax.legend()
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
 
     # Show plot
     plt.tight_layout()
@@ -758,11 +762,19 @@ if __name__ == "__main__":
     )
     create_scatter_plot(
         previous_times,
+        x3_times,
+        x_label=solver_x3,
+        y_label=solver_prev,
+        out_path="seq_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
+    )
+    create_scatter_plot(
+        previous_times,
         x4_times,
         x_label=solver_x4,
         y_label=solver_prev,
         out_path="seq_vs_partition_tlemmas_gen_time.pdf",
     )
+
     create_scatter_plot(
         current_times,
         x3_times,
@@ -770,6 +782,14 @@ if __name__ == "__main__":
         y_label=solver_curr,
         out_path="par45_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )
+    create_scatter_plot(
+        current_times,
+        x4_times,
+        x_label=solver_x4,
+        y_label=solver_curr,
+        out_path="par45_vs_partition_tlemmas_gen_time.pdf",
+    )
+
     create_scatter_plot(
         x3_times,
         x4_times,
@@ -786,7 +806,13 @@ if __name__ == "__main__":
         solver_curr,
         out_path="seq_vs_par45_tlemmas_num.pdf",
     )
-
+    create_tlemmas_scatter_plot(
+        prev_tlemmas,
+        x3_tlemmas,
+        solver_prev,
+        solver_x3,
+        out_path="seq_vs_par45_proj_atoms_tlemmas_num.pdf",
+    )
     create_tlemmas_scatter_plot(
         prev_tlemmas,
         x4_tlemmas,
@@ -801,6 +827,13 @@ if __name__ == "__main__":
         solver_curr,
         solver_x3,
         out_path="par45_vs_par45_proj_atoms_tlemmas_num.pdf",
+    )
+    create_tlemmas_scatter_plot(
+        curr_tlemmas,
+        x4_tlemmas,
+        solver_curr,
+        solver_x4,
+        out_path="par45_vs_partition_tlemmas_num.pdf",
     )
 
     create_tlemmas_scatter_plot(
@@ -845,7 +878,14 @@ if __name__ == "__main__":
         out_path="seq_vs_par45_tlemmas_median_size.pdf",
         log_scale=False,
     )
-
+    create_tlemmas_scatter_plot(
+        prev_median_tlemmas_sizes,
+        x3_median_tlemmas_sizes,
+        solver_prev,
+        solver_x3,
+        out_path="seq_vs_par45_proj_atoms_tlemmas_median_size.pdf",
+        log_scale=False,
+    )
     create_tlemmas_scatter_plot(
         prev_median_tlemmas_sizes,
         x4_median_tlemmas_sizes,
@@ -861,6 +901,14 @@ if __name__ == "__main__":
         solver_curr,
         solver_x3,
         out_path="par45_vs_par45_proj_atoms_tlemmas_median_size.pdf",
+        log_scale=False,
+    )
+    create_tlemmas_scatter_plot(
+        current_median_tlemmas_sizes,
+        x4_median_tlemmas_sizes,
+        solver_curr,
+        solver_x4,
+        out_path="par45_vs_partition_tlemmas_median_size.pdf",
         log_scale=False,
     )
 
