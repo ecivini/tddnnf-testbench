@@ -132,7 +132,7 @@ def main():
     refined_models = [
         [
             refinement_walker.walk(lit)
-            for lit in map(lambda atom, value: atom if value else Not(atom), model.items())
+            for lit in [atom if value else Not(atom) for atom, value in model.items()]
         ]
         for model in solver_abstr.projected_allsat(phi_and_lemmas_abstr, theory_atoms_abstr, total=True)
     ]
