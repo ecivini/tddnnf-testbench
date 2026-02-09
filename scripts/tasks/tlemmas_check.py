@@ -1,20 +1,15 @@
-from pysmt.shortcuts import read_smtlib, Solver, Iff, And
-from pysmt.fnode import FNode
-from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
-from theorydd.solvers.mathsat_partial_extended import MathSATExtendedPartialEnumerator
-from theorydd.solvers.with_partitioning import WithPartitioningWrapper
-from theorydd.formula import get_normalized
+import json
+import os
+import sys
+import time
 from typing import Iterable
-from pysmt.oracles import get_logic
-import pysmt
 
+from pysmt.fnode import FNode
+from pysmt.oracles import get_logic
+from pysmt.shortcuts import And, Iff, Solver, read_smtlib
+from theorydd.formula import get_normalized
 from theorydd.walkers.walker_bool_abstraction import BooleanAbstractionWalker
 from theorydd.walkers.walker_refinement import RefinementWalker
-
-import sys
-import os
-import json
-import time
 
 from scripts.tasks.tabularallsat import TabularAllSATInterface
 
@@ -99,13 +94,6 @@ def main():
     # ---- Generate lemmas ----
     print("Generating T-lemmas...")
     phi_atoms = list(phi.get_atoms())
-    # phi_sat = solver.check_all_sat(phi, atoms=phi_atoms, store_models=True)
-    # assert gt_logs is not None or solver.get_models_count() == gt_model_count(
-    #     gt_logs
-    # ), "Model count should match expected: {}".format(solver.get_models())
-
-    # print("Asserting models are T-sat...")
-    # assert_models_are_tsat(phi, solver.get_models())
 
     # ---- Build Boolean abstraction of phi & lemmas ----
     print("Normalizing T-lemmas...")
@@ -138,10 +126,13 @@ def main():
 
     # Check phi_and_lemmas is t-reduced
     print("Refining Boolean abstraction ...")
+    # enumerate projected on theory atoms, as T-satisfiability only depends on them
+    theory_atoms = [atom for atom in phi_atoms if atom.is_theory_relation()]
+    theory_atoms_abstr = [bool_walker.walk(atom) for atom in theory_atoms]
     refinement_walker = RefinementWalker(abstraction=bool_walker.abstraction)
     refined_models = [
         [refinement_walker.walk(lit) for lit in model]
-        for model in solver_abstr.projected_allsat(phi_and_lemmas_abstr, phi_abstr.get_atoms(), total=True)
+        for model in solver_abstr.projected_allsat(phi_and_lemmas_abstr, theory_atoms_abstr, total=True)
     ]
 
     assert_models_are_tsat(phi, refined_models)
