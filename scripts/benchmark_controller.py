@@ -204,6 +204,7 @@ def run_with_timeout_and_kill_children(
         preexec_fn=set_memory_limit(memory_limit),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=os.environ.copy(),
     )
     try:
         proc.wait(timeout=timeout + 2)
@@ -453,13 +454,9 @@ def tlemmas_check_task(data: dict) -> tuple:
     error_message = ""
     try:
         print(f"[+] Testing t-lemmas for formula {data['formula_path']}...")
-        solver = "parallel" if data["solver"] == "partition" else solver
-        partition = "true" if data["solver"] == "partition" else "false"
-        projection = "true" if data["solver"] == "partition" else "false"
         command = (
             f"python3 scripts/tasks/tlemmas_check.py {data['formula_path']} "
-            f"{data['base_output_path']} {solver} {projection} "
-            f"{partition} {data['tlemmas_path']} {data['gt_tlemmas_path']}"
+            f"{data['base_output_path']} {data['tlemmas_path']} {data['gt_tlemmas_path']}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(

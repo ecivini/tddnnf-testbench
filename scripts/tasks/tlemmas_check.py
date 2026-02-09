@@ -1,20 +1,17 @@
-from pysmt.shortcuts import read_smtlib, Solver, Iff, And
-from pysmt.fnode import FNode
-from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
-from theorydd.solvers.mathsat_partial_extended import MathSATExtendedPartialEnumerator
-from theorydd.solvers.with_partitioning import WithPartitioningWrapper
-from theorydd.formula import get_normalized
+import json
+import os
+import sys
+import time
 from typing import Iterable
-from pysmt.oracles import get_logic
-import pysmt
 
+from pysmt.fnode import FNode
+from pysmt.oracles import get_logic
+from pysmt.shortcuts import And, Iff, Not, Solver, read_smtlib
+from theorydd.formula import get_normalized
 from theorydd.walkers.walker_bool_abstraction import BooleanAbstractionWalker
 from theorydd.walkers.walker_refinement import RefinementWalker
 
-import sys
-import os
-import json
-import time
+from tabularallsat import TabularAllSATInterface
 
 
 def assert_models_are_tsat(phi: FNode, models: list[Iterable[FNode]]) -> None:
@@ -31,11 +28,9 @@ def assert_models_are_tsat(phi: FNode, models: list[Iterable[FNode]]) -> None:
 def assert_lemmas_are_tvalid(lemmas: list[FNode]):
     with Solver("msat") as check_solver:
         for lemma in lemmas:
-            check_solver.push()
             assert check_solver.is_valid(lemma), "Lemma {} is not valid".format(
                 lemma.serialize()
             )
-            check_solver.pop()
 
 
 def assert_phi_equiv_phi_and_lemmas(phi: FNode, phi_and_lemmas):
@@ -59,25 +54,24 @@ def gt_model_count(logs: dict) -> int:
 
 
 def main():
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 4:
         print(
             "Usage: python3 scripts/tasks/tlemmas_check.py <input formula> "
-            "<base output path> <solver_type> <use_projection> <use_partition> "
-            "<tlemmas to check path> <ground truth logs path | optional>"
+            "<base output path> <tlemmas to check path> <ground truth logs path | optional>"
         )
         sys.exit(1)
+
+    tabularallsat_path = os.getenv("TABULARALLSAT_PATH")
+    if tabularallsat_path is None:
+        raise ValueError("TABULARALLSAT_PATH environment variable not set")
 
     # Check base output path exists, otherwise create it
     if not os.path.exists(sys.argv[2]):
         os.makedirs(sys.argv[2])
 
     phi = read_smtlib(sys.argv[1])
-    solver_type = sys.argv[3]
-    use_projection = True if sys.argv[4].lower() == "true" else False
-    use_partition = True if sys.argv[5].lower() == "true" else False
-
     # Process T-lemmas to check
-    tlemmas_path = sys.argv[6]
+    tlemmas_path = sys.argv[3]
     if not os.path.isfile(tlemmas_path):
         print("[-] Invalid tlemmas path")
         sys.exit(1)
@@ -85,58 +79,20 @@ def main():
 
     # Read logs file
     gt_logs = None
-    if len(sys.argv) >= 8 and os.path.isfile(sys.argv[7]):
-        with open(sys.argv[7], "r") as logs_file:
+    if len(sys.argv) >= 5 and os.path.isfile(sys.argv[4]):
+        with open(sys.argv[4], "r") as logs_file:
             gt_logs = json.load(logs_file)
 
-    # mc = tlemmas_logs["T-DDNNF"]["Total models"]
-    solver = None
     logger = {}
-    if solver_type == "sequential":
-        solver = MathSATTotalEnumerator(
-            project_on_theory_atoms=use_projection,
-            computation_logger=logger,
-        )
-    elif solver_type == "parallel":
-        solver = MathSATExtendedPartialEnumerator(
-            project_on_theory_atoms=use_projection,
-            computation_logger=logger,
-            parallel_procs=6,
-        )
-    else:
-        raise ValueError("Unexpected solver type")
-
-    # mc_logger = {}
-    # solver_mc = MathSATTotalEnumerator(
-    #     project_on_theory_atoms=use_projection,
-    #     computation_logger=mc_logger,
-    # )
-
-    if use_partition:
-        solver = WithPartitioningWrapper(solver, computation_logger=logger)
 
     start_time = time.time()
 
     normalize_solver = Solver("msat")
     phi = get_normalized(phi, normalize_solver.converter)
 
-    # if not use_partition:
-    #     solver_mc.check_all_sat(
-    #         phi,
-    #         atoms=list(phi.get_atoms()),
-    #         store_models=False,
-    #     )
-
     # ---- Generate lemmas ----
     print("Generating T-lemmas...")
     phi_atoms = list(phi.get_atoms())
-    # phi_sat = solver.check_all_sat(phi, atoms=phi_atoms, store_models=True)
-    # assert gt_logs is not None or solver.get_models_count() == gt_model_count(
-    #     gt_logs
-    # ), "Model count should match expected: {}".format(solver.get_models())
-
-    # print("Asserting models are T-sat...")
-    # assert_models_are_tsat(phi, solver.get_models())
 
     # ---- Build Boolean abstraction of phi & lemmas ----
     print("Normalizing T-lemmas...")
@@ -165,24 +121,22 @@ def main():
         # assert_phi_equiv_phi_and_lemmas(phi, phi_and_lemmas)
 
     print("Running AllSAT on Boolean abstraction ...")
-    solver_abstr = MathSATTotalEnumerator(project_on_theory_atoms=False)
-    abstr_sat = solver_abstr.check_all_sat(
-        phi_and_lemmas_abstr,
-        atoms=list(phi_abstr.get_atoms()),
-        store_models=True,
-    )
-    print("Checking models number match ...")
-    assert abstr_sat, "Abstracted formula with lemmas should be satisfiable"
-    # assert (
-    #     use_partition or solver_abstr.get_models_count() == solver_mc.get_models_count()
-    # ), f"Model count should match expected: {solver_abstr.get_models_count()} vs {solver_mc.get_models_count()}"
+    solver_abstr = TabularAllSATInterface(tabularallsat_path)
 
     # Check phi_and_lemmas is t-reduced
     print("Refining Boolean abstraction ...")
+    # enumerate projected on theory atoms, as T-satisfiability only depends on them
+    theory_atoms = [atom for atom in phi_atoms if atom.is_theory_relation()]
+    theory_atoms_abstr = [bool_walker.walk(atom) for atom in theory_atoms]
     refinement_walker = RefinementWalker(abstraction=bool_walker.abstraction)
     refined_models = [
-        [refinement_walker.walk(lit) for lit in model]
-        for model in solver_abstr.get_models()
+        [
+            refinement_walker.walk(lit)
+            for lit in [atom if value else Not(atom) for atom, value in model.items()]
+        ]
+        for model in solver_abstr.projected_allsat(
+            phi_and_lemmas_abstr, theory_atoms_abstr, total=True
+        )
     ]
 
     assert_models_are_tsat(phi, refined_models)
