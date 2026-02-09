@@ -77,7 +77,7 @@ def main():
 
     phi = read_smtlib(sys.argv[1])
     # Process T-lemmas to check
-    tlemmas_path = sys.argv[6]
+    tlemmas_path = sys.argv[3]
     if not os.path.isfile(tlemmas_path):
         print("[-] Invalid tlemmas path")
         sys.exit(1)
@@ -85,8 +85,8 @@ def main():
 
     # Read logs file
     gt_logs = None
-    if len(sys.argv) >= 8 and os.path.isfile(sys.argv[7]):
-        with open(sys.argv[7], "r") as logs_file:
+    if len(sys.argv) >= 5 and os.path.isfile(sys.argv[4]):
+        with open(sys.argv[4], "r") as logs_file:
             gt_logs = json.load(logs_file)
 
     logger = {}
