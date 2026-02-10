@@ -452,11 +452,19 @@ def tlemmas_check_task(data: dict) -> tuple:
     """
     test_succeeded = True
     error_message = ""
+
+    # Replace gt tlemmas path with logs
+    gt_tlemmas_path = data["gt_tlemmas_path"]
+    gt_tlemmas_logs = "none"
+    if gt_tlemmas_path:
+        gt_tlemmas_dir = os.path.dirname(gt_tlemmas_path)
+        gt_tlemmas_logs = os.path.join(gt_tlemmas_dir, "logs.json")
+
     try:
         print(f"[+] Testing t-lemmas for formula {data['formula_path']}...")
         command = (
             f"python3 scripts/tasks/tlemmas_check.py {data['formula_path']} "
-            f"{data['base_output_path']} {data['tlemmas_path']} {data['gt_tlemmas_path']}"
+            f"{data['base_output_path']} {data['tlemmas_path']} {gt_tlemmas_logs}"
         )
         command = command.split(" ")
         return_code, error = run_with_timeout_and_kill_children(
@@ -541,6 +549,7 @@ def main():
     computed_bdds = {}
     computed_sdds = {}
     computed_nnfs = {}
+    gt_tlemmas = {}
     if selected_task in [
         TASK_TDDNNF,
         TASK_TBDD,
@@ -551,6 +560,9 @@ def main():
     ]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
+
+        if config["gt_tlemmas_dir"] != "":
+            gt_tlemmas = get_computed_tlemmas(config["gt_tlemmas_dir"])
 
         if "tddnnf_dir" not in config:
             raise RuntimeError("Missing tddnnf_dir in config.yaml")
@@ -583,7 +595,7 @@ def main():
             "bdd_path": find_associated(test_case, computed_bdds, for_nnf=True),
             "sdd_path": find_associated(test_case, computed_sdds, for_nnf=True),
             "task": selected_task,
-            "gt_tlemmas_path": config["gt_tlemmas_dir"],
+            "gt_tlemmas_path": find_associated(test_case, gt_tlemmas),
         }
         datas.append(data)
 
