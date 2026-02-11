@@ -286,7 +286,7 @@ def create_cactus_plot(
     plt.grid(True)
     plt.legend(fontsize=18)
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig(out_path, bbox_inches="tight", pad_inches=0)
 
 
 def create_scatter_plot(
@@ -323,7 +323,7 @@ def create_scatter_plot(
     linthresh = 10  # Linear region until 1
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(5, 5))
 
     # Scatter plot
     ax.scatter(
@@ -389,8 +389,8 @@ def create_scatter_plot(
     ax.set_ylim(bottom=1e-2, top=timeout * 1.1)
 
     # Labels
-    ax.set_xlabel(f"{x_label} times", fontsize=24)
-    ax.set_ylabel(f"{y_label} times", fontsize=24)
+    ax.set_xlabel(f"{x_label}", fontsize=24)
+    ax.set_ylabel(f"{y_label}", fontsize=24)
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
 
@@ -402,7 +402,7 @@ def create_scatter_plot(
 
     # Show plot
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig(out_path, bbox_inches="tight", pad_inches=0)
 
 
 def create_tlemmas_scatter_plot(
@@ -431,7 +431,7 @@ def create_tlemmas_scatter_plot(
     linthresh = None  # Linear region until 1
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(5, 5))
 
     # Scatter plot
     ax.scatter(
@@ -486,7 +486,7 @@ def create_tlemmas_scatter_plot(
 
     # Show plot
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig(out_path, bbox_inches="tight", pad_inches=0)
 
 
 def linearize_data(h3: dict, h4: dict) -> dict:
@@ -503,55 +503,55 @@ def linearize_data(h3: dict, h4: dict) -> dict:
 
 
 if __name__ == "__main__":
-    solver_prev = "AllSMT"
-    solver_curr = "Divide and Conquer"
-    solver_x3 = "Projection"
-    solver_x4 = "Partitioning"
+    solver_prev = "Baseline"
+    solver_curr = "D&C"
+    solver_x3 = "D&C+Proj"
+    solver_x4 = "D&C+Proj+Part"
 
     ###########################################################################
     # RAND PROBLEMS
-    # previous_times, prev_tlemmas, prev_avg_tlemmas_sizes, prev_median_tlemmas_sizes = (
-    #     get_current_results_times(
-    #         "data/results/merged_all_tlemmas_sequential/errors.json",
-    #         [
-    #             "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
-    #             "data/results/merged_all_tlemmas_sequential/randgen/data",
-    #         ],
-    #     )
-    # )
+    previous_times, prev_tlemmas, prev_avg_tlemmas_sizes, prev_median_tlemmas_sizes = (
+        get_current_results_times(
+            "data/results/merged_all_tlemmas_sequential/errors.json",
+            [
+                "data/results/merged_all_tlemmas_sequential/ldd_randgen/data",  # noqa
+                "data/results/merged_all_tlemmas_sequential/randgen/data",
+            ],
+        )
+    )
 
-    # (
-    #     current_times,
-    #     curr_tlemmas,
-    #     current_avg_tlemmas_sizes,
-    #     current_median_tlemmas_sizes,
-    # ) = get_current_results_times(
-    #     "data/results/merged_all_tlemmas/errors.json",
-    #     [
-    #         "data/results/merged_all_tlemmas/ldd_randgen/data",
-    #         "data/results/merged_all_tlemmas/randgen/data",
-    #     ],
-    # )
+    (
+        current_times,
+        curr_tlemmas,
+        current_avg_tlemmas_sizes,
+        current_median_tlemmas_sizes,
+    ) = get_current_results_times(
+        "data/results/merged_all_tlemmas/errors.json",
+        [
+            "data/results/merged_all_tlemmas/ldd_randgen/data",
+            "data/results/merged_all_tlemmas/randgen/data",
+        ],
+    )
 
-    # x3_times, x3_tlemmas, x3_avg_tlemmas_sizes, x3_median_tlemmas_sizes = (
-    #     get_current_results_times(
-    #         "data/results/merged_all_tlemmas_projected/errors.json",
-    #         [
-    #             "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
-    #             "data/results/merged_all_tlemmas_projected/randgen/data",
-    #         ],
-    #     )
-    # )
+    x3_times, x3_tlemmas, x3_avg_tlemmas_sizes, x3_median_tlemmas_sizes = (
+        get_current_results_times(
+            "data/results/merged_all_tlemmas_projected/errors.json",
+            [
+                "data/results/merged_all_tlemmas_projected/ldd_randgen/data",  # noqa
+                "data/results/merged_all_tlemmas_projected/randgen/data",
+            ],
+        )
+    )
 
-    # x4_times, x4_tlemmas, x4_avg_tlemmas_sizes, x4_median_tlemmas_sizes = (
-    #     get_current_results_times(
-    #         "data/results/rand_partition/errors.json",
-    #         [
-    #             "data/results/rand_partition/data/serialized_tdds/ldd_randgen/data",  # noqa
-    #             "data/results/rand_partition/data/serialized_tdds/randgen/data",
-    #         ],
-    #     )
-    # )
+    x4_times, x4_tlemmas, x4_avg_tlemmas_sizes, x4_median_tlemmas_sizes = (
+        get_current_results_times(
+            "data/results/rand_partition/errors.json",
+            [
+                "data/results/rand_partition/data/serialized_tdds/ldd_randgen/data",  # noqa
+                "data/results/rand_partition/data/serialized_tdds/randgen/data",
+            ],
+        )
+    )
 
     ###########################################################################
     # PLANNING H3 PROBLEMS
@@ -643,110 +643,110 @@ if __name__ == "__main__":
     ###########################################################################
     ###########################################################################
     # LINEARIZED PLANNING H3 AND H4
-    h3_previous_times, h3_prev_tlemmas, _, h3_prev_median_tlemmas_sizes = (
-        get_current_results_times(
-            "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
-            [
-                "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
-            ],
-        )
-    )
+    # h3_previous_times, h3_prev_tlemmas, _, h3_prev_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/errors.json",
+    #         [
+    #             "data/results/planning_sequential/qui_tlemmas_planning_h3_1Prob_Sequential/data/benchmark/planning/h3/Painter",  # noqa
+    #         ],
+    #     )
+    # )
 
-    (
-        h3_current_times,
-        h3_curr_tlemmas,
-        _,
-        h3_current_median_tlemmas_sizes,
-    ) = get_current_results_times(
-        "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
-        [
-            "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
-        ],
-    )
+    # (
+    #     h3_current_times,
+    #     h3_curr_tlemmas,
+    #     _,
+    #     h3_current_median_tlemmas_sizes,
+    # ) = get_current_results_times(
+    #     "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/errors.json",
+    #     [
+    #         "data/results/planning_parallel45/quo_tlemmas_planning_h3_1Prob_45Procs/data/benchmark/planning/h3/Painter",  # noqa
+    #     ],
+    # )
 
-    h3_x3_times, h3_x3_tlemmas, _, h3_x3_median_tlemmas_sizes = (
-        get_current_results_times(
-            "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
-            [
-                "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
-            ],
-        )
-    )
+    # h3_x3_times, h3_x3_tlemmas, _, h3_x3_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/errors.json",
+    #         [
+    #             "data/results/planning_parallel45_proj/qua_tlemmas_planning_h3_1Prob_45Procs_ProjectedAtoms/data/benchmark/planning/h3/Painter",  # noqa
+    #         ],
+    #     )
+    # )
 
-    h3_x4_times, h3_x4_tlemmas, _, h3_x4_median_tlemmas_sizes = (
-        get_current_results_times(
-            None,  # "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/errors.json",
-            [
-                "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/data/benchmark/planning/h3/Painter",  # noqa
-            ],
-        )
-    )
+    # h3_x4_times, h3_x4_tlemmas, _, h3_x4_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         None,  # "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/errors.json",
+    #         [
+    #             "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/data/benchmark/planning/h3/Painter",  # noqa
+    #         ],
+    #     )
+    # )
 
-    h4_previous_times, h4_prev_tlemmas, _, h4_prev_median_tlemmas_sizes = (
-        get_current_results_times(
-            "data/results/planning_h4_seq/errors.json",
-            [
-                "data/results/planning_h4_seq/data/benchmark/planning/h4/Painter",  # noqa
-            ],
-            solver_prev,
-        )
-    )
+    # h4_previous_times, h4_prev_tlemmas, _, h4_prev_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/planning_h4_seq/errors.json",
+    #         [
+    #             "data/results/planning_h4_seq/data/benchmark/planning/h4/Painter",  # noqa
+    #         ],
+    #         solver_prev,
+    #     )
+    # )
 
-    (
-        h4_current_times,
-        h4_curr_tlemmas,
-        _,
-        h4_current_median_tlemmas_sizes,
-    ) = get_current_results_times(
-        "data/results/planning_h4_par/errors.json",
-        [
-            "data/results/planning_h4_par/data/benchmark/planning/h4/Painter",  # noqa
-        ],
-        solver_curr,
-    )
+    # (
+    #     h4_current_times,
+    #     h4_curr_tlemmas,
+    #     _,
+    #     h4_current_median_tlemmas_sizes,
+    # ) = get_current_results_times(
+    #     "data/results/planning_h4_par/errors.json",
+    #     [
+    #         "data/results/planning_h4_par/data/benchmark/planning/h4/Painter",  # noqa
+    #     ],
+    #     solver_curr,
+    # )
 
-    h4_x3_times, h4_x3_tlemmas, _, h4_x3_median_tlemmas_sizes = (
-        get_current_results_times(
-            "data/results/planning_h4_proj/errors.json",
-            [
-                "data/results/planning_h4_proj/data/benchmark/planning/h4/Painter",  # noqa
-            ],
-            solver_x3,
-        )
-    )
+    # h4_x3_times, h4_x3_tlemmas, _, h4_x3_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         "data/results/planning_h4_proj/errors.json",
+    #         [
+    #             "data/results/planning_h4_proj/data/benchmark/planning/h4/Painter",  # noqa
+    #         ],
+    #         solver_x3,
+    #     )
+    # )
 
-    h4_x4_times, h4_x4_tlemmas, h4_x4_avg_tlemmas_sizes, h4_x4_median_tlemmas_sizes = (
-        get_current_results_times(
-            None,  # "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/errors.json",
-            [
-                "data/results/planning_h4_proj_with_partitioning/data/benchmark/planning/h4/Painter",  # noqa
-            ],
-            solver_x4,
-        )
-    )
+    # h4_x4_times, h4_x4_tlemmas, h4_x4_avg_tlemmas_sizes, h4_x4_median_tlemmas_sizes = (
+    #     get_current_results_times(
+    #         None,  # "data/results/planning_h3_partition/planning_h3_proj_with_partitioning/errors.json",
+    #         [
+    #             "data/results/planning_h4_proj_with_partitioning/data/benchmark/planning/h4/Painter",  # noqa
+    #         ],
+    #         solver_x4,
+    #     )
+    # )
 
-    previous_times = linearize_data(h3_previous_times, h4_previous_times)
-    current_times = linearize_data(h3_current_times, h4_current_times)
-    x3_times = linearize_data(h3_x3_times, h4_x3_times)
-    x4_times = linearize_data(h3_x4_times, h4_x4_times)
+    # previous_times = linearize_data(h3_previous_times, h4_previous_times)
+    # current_times = linearize_data(h3_current_times, h4_current_times)
+    # x3_times = linearize_data(h3_x3_times, h4_x3_times)
+    # x4_times = linearize_data(h3_x4_times, h4_x4_times)
 
-    prev_tlemmas = linearize_data(h3_prev_tlemmas, h4_prev_tlemmas)
-    curr_tlemmas = linearize_data(h3_curr_tlemmas, h4_curr_tlemmas)
-    x3_tlemmas = linearize_data(h3_x3_tlemmas, h4_x3_tlemmas)
-    x4_tlemmas = linearize_data(h3_x4_tlemmas, h4_x4_tlemmas)
+    # prev_tlemmas = linearize_data(h3_prev_tlemmas, h4_prev_tlemmas)
+    # curr_tlemmas = linearize_data(h3_curr_tlemmas, h4_curr_tlemmas)
+    # x3_tlemmas = linearize_data(h3_x3_tlemmas, h4_x3_tlemmas)
+    # x4_tlemmas = linearize_data(h3_x4_tlemmas, h4_x4_tlemmas)
 
-    prev_median_tlemmas_sizes = linearize_data(
-        h3_prev_median_tlemmas_sizes, h4_prev_median_tlemmas_sizes
-    )
-    current_median_tlemmas_sizes = linearize_data(
-        h3_current_median_tlemmas_sizes, h4_current_median_tlemmas_sizes
-    )
-    x3_median_tlemmas_sizes = linearize_data(
-        h3_x3_median_tlemmas_sizes, h4_x3_median_tlemmas_sizes
-    )
-    x4_median_tlemmas_sizes = linearize_data(
-        h3_x4_median_tlemmas_sizes, h4_x4_median_tlemmas_sizes
-    )
+    # prev_median_tlemmas_sizes = linearize_data(
+    #     h3_prev_median_tlemmas_sizes, h4_prev_median_tlemmas_sizes
+    # )
+    # current_median_tlemmas_sizes = linearize_data(
+    #     h3_current_median_tlemmas_sizes, h4_current_median_tlemmas_sizes
+    # )
+    # x3_median_tlemmas_sizes = linearize_data(
+    #     h3_x3_median_tlemmas_sizes, h4_x3_median_tlemmas_sizes
+    # )
+    # x4_median_tlemmas_sizes = linearize_data(
+    #     h3_x4_median_tlemmas_sizes, h4_x4_median_tlemmas_sizes
+    # )
 
     ###################################################################
     ###################################################################
@@ -754,93 +754,141 @@ if __name__ == "__main__":
 
     # Scatter plots
     create_scatter_plot(
-        previous_times,
+        # previous_times,
+        # current_times,
+        # x_label=solver_curr,
+        # y_label=solver_prev,
         current_times,
-        x_label=solver_curr,
-        y_label=solver_prev,
+        previous_times,
+        y_label=solver_curr,
+        x_label=solver_prev,
         out_path="seq_vs_par45_tlemmas_gen_time.pdf",
     )
     create_scatter_plot(
-        previous_times,
+        # previous_times,
+        # x3_times,
+        # x_label=solver_x3,
+        # y_label=solver_prev,
         x3_times,
-        x_label=solver_x3,
-        y_label=solver_prev,
+        previous_times,
+        y_label=solver_x3,
+        x_label=solver_prev,
         out_path="seq_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )
     create_scatter_plot(
-        previous_times,
+        # previous_times,
+        # x4_times,
+        # x_label=solver_x4,
+        # y_label=solver_prev,
         x4_times,
-        x_label=solver_x4,
-        y_label=solver_prev,
+        previous_times,
+        y_label=solver_x4,
+        x_label=solver_prev,
         out_path="seq_vs_partition_tlemmas_gen_time.pdf",
     )
 
     create_scatter_plot(
-        current_times,
+        # current_times,
+        # x3_times,
+        # x_label=solver_x3,
+        # y_label=solver_curr,
         x3_times,
-        x_label=solver_x3,
-        y_label=solver_curr,
+        current_times,
+        y_label=solver_x3,
+        x_label=solver_curr,
         out_path="par45_vs_par45_proj_atoms_tlemmas_gen_time.pdf",
     )
     create_scatter_plot(
-        current_times,
+        # current_times,
+        # x4_times,
+        # x_label=solver_x4,
+        # y_label=solver_curr,
         x4_times,
-        x_label=solver_x4,
-        y_label=solver_curr,
+        current_times,
+        y_label=solver_x4,
+        x_label=solver_curr,
         out_path="par45_vs_partition_tlemmas_gen_time.pdf",
     )
 
     create_scatter_plot(
-        x3_times,
+        # x3_times,
+        # x4_times,
+        # x_label=solver_x4,
+        # y_label=solver_x3,
         x4_times,
-        x_label=solver_x4,
-        y_label=solver_x3,
+        x3_times,
+        y_label=solver_x4,
+        x_label=solver_x3,
         out_path="par45_proj_vs_partition_tlemmas_gen_time.pdf",
     )
 
     # T-lemmas number
     create_tlemmas_scatter_plot(
-        prev_tlemmas,
+        # prev_tlemmas,
+        # curr_tlemmas,
+        # solver_prev,
+        # solver_curr,
         curr_tlemmas,
-        solver_prev,
+        prev_tlemmas,
         solver_curr,
+        solver_prev,
         out_path="seq_vs_par45_tlemmas_num.pdf",
     )
     create_tlemmas_scatter_plot(
-        prev_tlemmas,
+        # prev_tlemmas,
+        # x3_tlemmas,
+        # solver_prev,
+        # solver_x3,
         x3_tlemmas,
-        solver_prev,
+        prev_tlemmas,
         solver_x3,
+        solver_prev,
         out_path="seq_vs_par45_proj_atoms_tlemmas_num.pdf",
     )
     create_tlemmas_scatter_plot(
-        prev_tlemmas,
+        # prev_tlemmas,
+        # x4_tlemmas,
+        # solver_prev,
+        # solver_x4,
         x4_tlemmas,
-        solver_prev,
+        prev_tlemmas,
         solver_x4,
+        solver_prev,
         out_path="seq_vs_partition_tlemmas_num.pdf",
     )
 
     create_tlemmas_scatter_plot(
-        curr_tlemmas,
+        # curr_tlemmas,
+        # x3_tlemmas,
+        # solver_curr,
+        # solver_x3,
         x3_tlemmas,
-        solver_curr,
+        curr_tlemmas,
         solver_x3,
+        solver_curr,
         out_path="par45_vs_par45_proj_atoms_tlemmas_num.pdf",
     )
     create_tlemmas_scatter_plot(
-        curr_tlemmas,
+        # curr_tlemmas,
+        # x4_tlemmas,
+        # solver_curr,
+        # solver_x4,
         x4_tlemmas,
-        solver_curr,
+        curr_tlemmas,
         solver_x4,
+        solver_curr,
         out_path="par45_vs_partition_tlemmas_num.pdf",
     )
 
     create_tlemmas_scatter_plot(
-        x3_tlemmas,
+        # x3_tlemmas,
+        # x4_tlemmas,
+        # solver_x3,
+        # solver_x4,
         x4_tlemmas,
-        solver_x3,
+        x3_tlemmas,
         solver_x4,
+        solver_x3,
         out_path="par45_proj_vs_partition_tlemmas_num.pdf",
     )
 
@@ -871,52 +919,72 @@ if __name__ == "__main__":
 
     # Tlemmas median sizes
     create_tlemmas_scatter_plot(
-        prev_median_tlemmas_sizes,
+        # prev_median_tlemmas_sizes,
+        # current_median_tlemmas_sizes,
+        # solver_prev,
+        # solver_curr,
         current_median_tlemmas_sizes,
-        solver_prev,
+        prev_median_tlemmas_sizes,
         solver_curr,
+        solver_prev,
         out_path="seq_vs_par45_tlemmas_median_size.pdf",
         log_scale=False,
     )
     create_tlemmas_scatter_plot(
-        prev_median_tlemmas_sizes,
+        # prev_median_tlemmas_sizes,
+        # x3_median_tlemmas_sizes,
+        # solver_prev,
+        # solver_x3,
         x3_median_tlemmas_sizes,
-        solver_prev,
+        prev_median_tlemmas_sizes,
         solver_x3,
+        solver_prev,
         out_path="seq_vs_par45_proj_atoms_tlemmas_median_size.pdf",
         log_scale=False,
     )
     create_tlemmas_scatter_plot(
-        prev_median_tlemmas_sizes,
+        # prev_median_tlemmas_sizes,
+        # x4_median_tlemmas_sizes,
+        # solver_prev,
+        # solver_x4,
         x4_median_tlemmas_sizes,
-        solver_prev,
+        prev_median_tlemmas_sizes,
         solver_x4,
+        solver_prev,
         out_path="seq_vs_partition_tlemmas_median_size.pdf",
         log_scale=False,
     )
 
     create_tlemmas_scatter_plot(
-        current_median_tlemmas_sizes,
+        # current_median_tlemmas_sizes,
+        # x3_median_tlemmas_sizes,
+        # solver_curr,
+        # solver_x3,
         x3_median_tlemmas_sizes,
-        solver_curr,
+        current_median_tlemmas_sizes,
         solver_x3,
+        solver_curr,
         out_path="par45_vs_par45_proj_atoms_tlemmas_median_size.pdf",
         log_scale=False,
     )
     create_tlemmas_scatter_plot(
-        current_median_tlemmas_sizes,
         x4_median_tlemmas_sizes,
-        solver_curr,
+        current_median_tlemmas_sizes,
         solver_x4,
+        solver_curr,
         out_path="par45_vs_partition_tlemmas_median_size.pdf",
         log_scale=False,
     )
 
     create_tlemmas_scatter_plot(
-        x3_median_tlemmas_sizes,
+        # x3_median_tlemmas_sizes,
+        # x4_median_tlemmas_sizes,
+        # solver_x3,
+        # solver_x4,
         x4_median_tlemmas_sizes,
-        solver_x3,
+        x3_median_tlemmas_sizes,
         solver_x4,
+        solver_x3,
         out_path="par45_proj_vs_partition_tlemmas_median_size.pdf",
         log_scale=False,
     )
