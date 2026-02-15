@@ -191,7 +191,7 @@ def main():
     cubes = generate_ce_cubes(normalizer_solver, phi)
 
     # Run CE test for both SMT and t-d-DNNF
-    computations = []
+    computations = {}
 
     ddnnf = Ddnnf.from_file(nnf_path, None)
 
@@ -238,7 +238,7 @@ def main():
             "T-BDD result": tbdd_result,
             "T-BDD time": tbdd_time,
         }
-        computations.append(log)
+        computations[str(cube)] = log
 
     # Store logs
     logs_path = os.path.join(base_out_path, "logs.json")

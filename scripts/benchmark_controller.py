@@ -136,6 +136,8 @@ def get_computed_tlemmas(path: str) -> dict[str, str]:
                     .replace("/ldd_randgen", "")
                 )
                 tlemmas[key] = tlemma
+                print("Problem:", key)
+                print("T-lemma:", tlemma)
             else:
                 print("[-] Skipping tlemma:", tlemma)
     return tlemmas
@@ -267,6 +269,7 @@ def tddnnf_task(data: dict) -> tuple:
     Returns a tuple (succeeded: bool, test_case: str, error_message: str)
     """
     if data["tlemmas_path"] is None:
+        print("Missing tlemmas for:", data["formula_path"])
         return False, data["formula_path"], "Missing tlemmas"
 
     compilation_succeeded = True

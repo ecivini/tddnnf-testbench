@@ -4,6 +4,7 @@ from pysmt.fnode import FNode
 from theorydd.formula import get_normalized
 from theorydd.tdd.theory_bdd import TheoryBDD
 from theorydd.tdd.theory_sdd import TheorySDD
+from ddnnife import Ddnnf
 
 import subprocess
 
@@ -25,23 +26,20 @@ TIMES_TO_CONSIDER = [
 
 # Assumes clause and mapping are noramlized already
 def tddnnf_mc(nnf_path: str, atoms_num: int) -> tuple[int, float]:
+    ddnnf = Ddnnf.from_file(nnf_path, atoms_num)
+
     start = time.time()
     # Run ddnnife
-    tool_path = "./tools/ddnnife-x86_64-linux/bin/ddnnife"
-    command = f"{tool_path} -i {nnf_path} --total-features {atoms_num} count"
-    proc = subprocess.run(
-        command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    count = ddnnf.as_mut().count([])
     end = time.time()
 
-    count = int(proc.stdout.decode("utf-8"))
-    return count, end - start
+    return int(str(count)), end - start
 
 
 # Computes the model count of a formula. Takes the result from
 # the generated tlemmas log to save time
 # Returns a tuple (count, time_taken_ms)
-def smt_mc(tlemmas_path: str) -> tuple[int, float]:
+def smt_mc(tlemmas_path: str) -> tuple[int | None, float]:
     dir_path = os.path.dirname(tlemmas_path)
     logs_path = os.path.join(dir_path, "logs.json")
 
@@ -49,7 +47,13 @@ def smt_mc(tlemmas_path: str) -> tuple[int, float]:
     with open(logs_path, "r") as logs_f:
         logs = json.load(logs_f)
 
-    return logs["T-DDNNF"]["Total models"], logs["T-DDNNF"]["All-SMT computation time"]
+    count = None
+    # In some cases, i.e. Partitioning, we don't have an exact model count
+    # natively from the logs
+    if "Total models" in logs["T-DDNNF"]:
+        count = logs["T-DDNNF"]["Total models"]
+
+    return count, logs["T-DDNNF"]["All-SMT computation time"]
 
 
 def tbdd_mc(phi: FNode, tbdd_base_path: str) -> tuple[int, float]:
