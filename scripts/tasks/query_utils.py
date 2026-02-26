@@ -5,7 +5,9 @@ from theorydd.formula import get_normalized
 import random
 
 
-def generate_ce_cubes(solver: SMTEnumerator, phi: FNode, seed: int = 42) -> list[FNode]:
+def generate_ce_cubes(
+    solver: SMTEnumerator, phi: FNode, seed: int = 42, desired_cub_num=0
+) -> list[FNode]:
     random.seed(seed)
 
     cubes = set()
@@ -13,7 +15,9 @@ def generate_ce_cubes(solver: SMTEnumerator, phi: FNode, seed: int = 42) -> list
     # Compute the number of cubes to generate
     atoms = list(phi.get_atoms())
     atoms_num = len(atoms)
-    cubes_num = _compute_cubes_num(atoms_num)
+    cubes_num = (
+        _compute_cubes_num(atoms_num) if desired_cub_num == 0 else desired_cub_num
+    )
 
     while len(cubes) < cubes_num:
         cube = _compute_cube(solver, atoms)

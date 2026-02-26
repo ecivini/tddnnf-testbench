@@ -24,6 +24,7 @@ TASK_TBDD = "tbdd"
 TASK_TSDD = "tsdd"
 TASK_QUERY_MC = "query_mc"
 TASK_QUERY_CE = "query_ce"
+TASK_QUERY_MC_UA = "query_mcua"
 ALLOWED_TASKS = [
     TASK_TLEMMAS,
     TASK_TLEMMAS_WITH_PROJECTION,
@@ -35,8 +36,14 @@ ALLOWED_TASKS = [
     TASK_QUERY_MC,
     TASK_QUERY_CE,
     TASK_TLEMMAS_CHECK,
+    TASK_QUERY_MC_UA,
 ]
-TLEMMAS_RELATED_TASKS = [TASK_TLEMMAS, TASK_TLEMMAS_WITH_PROJECTION, TASK_TLEMMAS_CHECK]
+TLEMMAS_RELATED_TASKS = [
+    TASK_TLEMMAS,
+    TASK_TLEMMAS_WITH_PROJECTION,
+    TASK_TLEMMAS_CHECK,
+    TASK_QUERY_MC_UA,
+]
 
 TBDDS_RESULTS_BASE_PATHS = [
     "data/results/tbdd_par_proj/tbdd_parallel_proj/data/serialized_tdds/ldd_randgen/data",
@@ -136,8 +143,6 @@ def get_computed_tlemmas(path: str) -> dict[str, str]:
                     .replace("/ldd_randgen", "")
                 )
                 tlemmas[key] = tlemma
-                print("Problem:", key)
-                print("T-lemma:", tlemma)
             else:
                 print("[-] Skipping tlemma:", tlemma)
     return tlemmas
@@ -400,6 +405,45 @@ def query_mc_task(data: dict) -> tuple:
     return compilation_succeeded, data["formula_path"], error_message
 
 
+def query_mc_ua_task(data: dict) -> tuple:
+    """
+    Run MC under assumption queries on all inputs for plain SMT and d-DNNF.
+    Returns a tuple (succeeded: bool, test_case: str, error_message: str)
+    """
+    if data["nnf_path"] is None:
+        return False, data["formula_path"], "Missing T-d-DNNF"
+
+    compilation_succeeded = True
+    error_message = ""
+    try:
+        print(f"[+] [MCUA] Querying formula {data['formula_path']}...")
+        command = (
+            f"python3 scripts/tasks/query_mc_ua_task.py {data['formula_path']} "
+            f"{data['base_output_path']} {data['nnf_path']}"
+        )
+        print(command)
+        command = command.split(" ")
+        return_code, error = run_with_timeout_and_kill_children(
+            command, data["timeout"], data["memory_limit"]
+        )
+        if return_code != 0:
+            print(f"[-] Error during query of {data['formula_path']}:", error)
+            compilation_succeeded = False
+            error_message = error
+        else:
+            print(f"[+] Successfully queried {data['formula_path']}")
+    except subprocess.TimeoutExpired:
+        print(f"\t[-] Timeout during query of {data['formula_path']}")
+        compilation_succeeded = False
+        error_message = "timeout"
+    except Exception as e:
+        print(f"[-] Exception during query of {data['formula_path']}: {e}")
+        compilation_succeeded = False
+        error_message = str(e)
+
+    return compilation_succeeded, data["formula_path"], error_message
+
+
 def query_ce_task(data: dict) -> tuple:
     """
     Run CE queries on all inputs for plain SMT, d-DNNF, BDD and SDD.
@@ -500,6 +544,12 @@ def find_associated(
             # sanity
             if "ldd_" in benchmark and "ldd_" not in key:
                 continue
+            if "h3" in benchmark and "h3" not in key:
+                continue
+            if "h4" in benchmark and "h4" not in key:
+                continue
+            if "h5" in benchmark and "h5" not in key:
+                continue
             if pieces[-1] in benchmark:
                 return map[key]
     else:
@@ -560,6 +610,7 @@ def main():
         TASK_QUERY_MC,
         TASK_QUERY_CE,
         TASK_TLEMMAS_CHECK,
+        TASK_QUERY_MC_UA,
     ]:
         tlemmas_base_path = config["tlemmas_dir"]
         computed_tlemmas = get_computed_tlemmas(tlemmas_base_path)
@@ -619,6 +670,8 @@ def main():
         task_fn = query_ce_task
     elif selected_task == TASK_TLEMMAS_CHECK:
         task_fn = tlemmas_check_task
+    elif selected_task == TASK_QUERY_MC_UA:
+        task_fn = query_mc_ua_task
     elif selected_task == TASK_QUERY:
         print("[-] Query task not implemented yet")
         sys.exit(1)

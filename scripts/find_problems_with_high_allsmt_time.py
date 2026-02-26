@@ -8,7 +8,7 @@ import shutil
 
 TLEMMAS_DIR = "data/results/merged_all_tlemmas_projected"
 PROBLEMS_DIR = "data/michelutti_tdds"
-RESULT_DIR = "data/high_all_smt_time_problems"
+RESULT_DIR = "data/high_all_smt_time_problems_on_proj_100s"
 DEFAULT_MIN_TIME = 100.0
 DEFAULT_TIMEOUT = 3600.0
 
@@ -27,6 +27,8 @@ def scan_tlemmas(min_allsmt_time: float) -> list:
                 allsmt_time = data["T-DDNNF"]["All-SMT computation time"]
                 if allsmt_time >= min_allsmt_time and allsmt_time < DEFAULT_TIMEOUT:
                     problems.append(file_path)
+
+    print(f"Found {len(problems)} problems")
 
     return problems
 
