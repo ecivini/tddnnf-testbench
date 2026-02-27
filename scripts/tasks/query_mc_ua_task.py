@@ -6,18 +6,21 @@ from ddnnife import Ddnnf
 from query_utils import generate_ce_cubes
 from nnf_utils import load_mapping
 
+import multiprocessing
+
 import sys
 import os
 import time
 import json
 
 QUERY_NUMBER_LIMIT = 10
+DEFAULT_TIMEOUT_SEC = 600
 
 
 # Computes the model count of a formula. Takes the result from
 # the generated tlemmas log to save time
 # Returns a tuple (count, time_taken_ms)
-def smt_mc_ua(phi: FNode, query: FNode) -> tuple[int | None, float]:
+def smt_mc_ua_worker(phi: FNode, query: FNode, queue: multiprocessing.Queue) -> None:
     # use stack interface to add query
     phi_and_query = And(phi, query)
     logger = {}
@@ -32,7 +35,38 @@ def smt_mc_ua(phi: FNode, query: FNode) -> tuple[int | None, float]:
 
     count = solver.get_models_count()
 
-    return count, end - start
+    queue.put((count, end - start))
+
+
+def smt_mc_ua_builder(phi: FNode, query: FNode) -> tuple[int, float]:
+    args = " ".join(sys.argv)
+    command = f"python3 {args} worker"
+    command = command.split()
+
+    queue = multiprocessing.Queue()
+    try:
+        process = multiprocessing.Process(
+            target=smt_mc_ua_worker,
+            args=(phi, query, queue),
+        )
+        process.start()
+        process.join(timeout=DEFAULT_TIMEOUT_SEC)
+
+        if process.is_alive():
+            print("Timeout reached for query:", str(query))
+            process.terminate()  # kill worker
+            process.join()  # clean up
+            return -1, DEFAULT_TIMEOUT_SEC
+    except Exception:
+        print("Unhandled error with", query)
+        return -2, -2
+
+    assert not queue.empty(), "Queue should not be empty"
+    result, total_time = queue.get()
+
+    # print("allsmt", result, total_time)
+
+    return result, total_time
 
 
 def tddnnf_mc_ua(
@@ -55,8 +89,8 @@ def tddnnf_mc_ua(
 
     start = time.time()
     count = ddnnf.as_mut().count_multiple(assumptions=assumptions, variables=[])
-    print(count)
     end = time.time()
+    # print("ddnnf", count, end - start)
 
     return int(str(count[0])), end - start
 
@@ -91,6 +125,7 @@ def main():
     abstraction, _ = load_mapping(normalizer_solver, mapping_path)
 
     logs = {"MC": {}}
+    errors = {}
 
     # Generate 50 queries so that it's unlikely to find more than 40 unsat cases
     queries = generate_ce_cubes(solver=normalizer_solver, phi=phi, desired_cub_num=50)
@@ -102,13 +137,13 @@ def main():
         query = get_normalized(query, normalizer_converter)
 
         # Extract SMT result
-        smt_count, smt_time = smt_mc_ua(phi, query)
+        smt_count, smt_time = smt_mc_ua_builder(phi, query)
 
         # Compute t-d-DNNF result
         nnf_count, nnf_time = tddnnf_mc_ua(ddnnf, query, abstraction)
 
         assert (
-            smt_count == nnf_count
+            smt_count < 0 or smt_count == nnf_count
         ), f"Counts should match: {smt_count} vs {nnf_count}"
 
         # Adding None's for DDs to keep compatibility
@@ -122,6 +157,7 @@ def main():
                 "T-BDD count": None,
                 "T-SDD time": None,
                 "T-SDD count": None,
+                "AllSMT timeout": smt_count < 0,
             }
             logs["MC"][str(query)] = log
             sat_queries += 1

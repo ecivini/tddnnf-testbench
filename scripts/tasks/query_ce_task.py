@@ -188,7 +188,8 @@ def main():
         pysmt_abstraction[atom] = Symbol(f"v{abstraction[atom]}", BOOL)
 
     # Generate clauses
-    cubes = generate_ce_cubes(normalizer_solver, phi)
+    cubes_num = min(50, len(phi.get_atoms()))
+    cubes = generate_ce_cubes(normalizer_solver, phi, desired_cub_num=cubes_num)
 
     # Run CE test for both SMT and t-d-DNNF
     computations = {}
