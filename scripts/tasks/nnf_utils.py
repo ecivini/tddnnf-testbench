@@ -1,4 +1,4 @@
-from theorydd.solvers.solver import SMTEnumerator
+from enumerators.solvers.solver import SMTEnumerator
 from theorydd.formula import get_normalized
 from pysmt.smtlib.parser import SmtLibParser
 from io import StringIO

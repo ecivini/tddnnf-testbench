@@ -1,6 +1,6 @@
 from pysmt.fnode import FNode
 from pysmt.shortcuts import Not, And
-from theorydd.solvers.solver import SMTEnumerator
+from enumerators.solvers.solver import SMTEnumerator
 from theorydd.formula import get_normalized
 import random
 

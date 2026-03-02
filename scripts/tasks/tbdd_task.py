@@ -1,6 +1,6 @@
 from theorydd.tdd.theory_bdd import TheoryBDD
 from pysmt.shortcuts import read_smtlib
-from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
+from enumerators.solvers.mathsat_total import MathSATTotalEnumerator
 
 import sys
 import os

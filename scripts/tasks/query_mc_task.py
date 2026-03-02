@@ -1,4 +1,4 @@
-from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
+from enumerators.solvers.mathsat_total import MathSATTotalEnumerator
 from pysmt.shortcuts import read_smtlib
 from pysmt.fnode import FNode
 from theorydd.formula import get_normalized

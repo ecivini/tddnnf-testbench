@@ -1,5 +1,5 @@
-from theorydd.solvers.mathsat_total import MathSATTotalEnumerator
-from theorydd.solvers.solver import SMTEnumerator
+from enumerators.solvers.mathsat_total import MathSATTotalEnumerator
+from enumerators.solvers.solver import SMTEnumerator
 from pysmt.shortcuts import read_smtlib, Symbol, BOOL
 from pysmt.smtlib.printers import SmtPrinter
 from query_utils import generate_ce_cubes, get_normalized
