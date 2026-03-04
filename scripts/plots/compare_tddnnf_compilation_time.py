@@ -1,6 +1,10 @@
 import json
 import os
 
+from pysmt.shortcuts import read_smtlib
+from pysmt.oracles import SizeOracle
+import pysmt
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -56,13 +60,20 @@ def get_previous_results_times() -> tuple[dict, int, dict, dict, dict]:
     return times, timeouts, nodes, edges, partial_models
 
 
+def get_phi_size(phi_path: str) -> int:
+    pysmt.environment.reset_env()
+    phi = read_smtlib(phi_path)
+    return SizeOracle().get_size(phi)
+
+
 def get_current_results_times(
     err_file: str, paths: list[str]
-) -> tuple[dict, int, dict, dict, dict]:
+) -> tuple[dict, int, dict, dict, dict, dict, dict]:
     times = {}
     edges = {}
     nodes = {}
     partial_models = {}
+    phi_sizes = {}
 
     missing_tlemmas = 0
     if err_file:
@@ -84,6 +95,7 @@ def get_current_results_times(
                     continue
 
                 file_path = os.path.join(root, file)
+
                 with open(file_path, "r") as f:
                     data = json.load(f)
 
@@ -92,7 +104,15 @@ def get_current_results_times(
                 edges[problem_name] = data["T-DDNNF"][DDNNF_EDGES_KEY]
                 nodes[problem_name] = data["T-DDNNF"][DDNNF_NODES_KEY]
 
-    return times, missing_tlemmas, nodes, edges, partial_models
+                phi_path = "/".join(file_path.split(os.sep)[2:])
+                phi_path = phi_path.replace("/logs.json", ".smt2")
+                phi_sizes[problem_name] = get_phi_size(phi_path)
+
+                print(
+                    f"[{problem_name}] DAG size vs d-DNNF nodes: {nodes[problem_name]} vs {phi_sizes[problem_name]}"
+                )
+
+    return times, missing_tlemmas, nodes, edges, partial_models, phi_sizes
 
 
 def create_cactus_plot(
@@ -289,6 +309,10 @@ def create_counter_scatter_plot(
     previous_label: str,
     current_label: str,
     out_path: str,
+    use_log_scale: bool = False,
+    x_axis_ticks_rotation: int = 45,
+    alpha: float = 1.0,
+    upperbound: float = 0.0,
 ):
     previous_edges = []
     current_edges = []
@@ -304,7 +328,11 @@ def create_counter_scatter_plot(
             current[problem]  # if current[problem] <= timeout else timeout
         )
 
-    timeout = max(max(previous_edges), max(current_edges))
+    timeout = (
+        max(max(previous_edges), max(current_edges))
+        if upperbound == 0.0
+        else upperbound
+    )
     # linthresh = timeout / 16  # Linear region until 1
 
     # Create figure
@@ -318,14 +346,14 @@ def create_counter_scatter_plot(
         edgecolors="black",
         s=100,
         zorder=4,
-        alpha=1,
+        alpha=alpha,
         marker="X",
     )
 
     # Reference line y = x
     ax.plot(
-        [1e-2, timeout],
-        [1e-2, timeout],
+        [0, timeout],
+        [0, timeout],
         label="y = x",
         zorder=2,
         color="gray",
@@ -341,6 +369,9 @@ def create_counter_scatter_plot(
     # ax.set_yscale('symlog', linthresh=linthresh)
     # ax.set_xscale("linear")
     # ax.set_yscale("equal")
+    if use_log_scale:
+        ax.set_xscale("symlog")
+        ax.set_yscale("symlog")
     ax.set_aspect("equal")
 
     # Set limits
@@ -350,7 +381,7 @@ def create_counter_scatter_plot(
     # Labelsprev_solver
     ax.set_xlabel(current_label, fontsize=24)
     ax.set_ylabel(previous_label, fontsize=24)
-    plt.xticks(fontsize=18, rotation=45)
+    plt.xticks(fontsize=18, rotation=x_axis_ticks_rotation)
     plt.yticks(fontsize=18)
 
     # Grid
@@ -405,164 +436,192 @@ if __name__ == "__main__":
     #     )
     # )
 
-    # PLANNING
-    previous_times, prev_timeouts, prev_nodes, prev_edges, prev_par_models = (
-        get_current_results_times(
-            "results/tddnnf_compilation_planning_seq/errors.json",
-            [
-                "results/tddnnf_compilation_planning_seq/data/benchmark/planning",  # noqa
-            ],
-        )
-    )
+    # # PLANNING
+    # previous_times, prev_timeouts, prev_nodes, prev_edges, prev_par_models = (
+    #     get_current_results_times(
+    #         "results/tddnnf_compilation_planning_seq/errors.json",
+    #         [
+    #             "results/tddnnf_compilation_planning_seq/data/benchmark/planning",  # noqa
+    #         ],
+    #     )
+    # )
 
-    current_times, curr_timeouts, curr_nodes, curr_edges, curr_par_models = (
-        get_current_results_times(
-            "results/tddnnf_compilation_planning_par/errors.json",
-            [
-                "results/tddnnf_compilation_planning_par/data/benchmark/planning",  # noqa
-            ],
-        )
-    )
+    # current_times, curr_timeouts, curr_nodes, curr_edges, curr_par_models = (
+    #     get_current_results_times(
+    #         "results/tddnnf_compilation_planning_par/errors.json",
+    #         [
+    #             "results/tddnnf_compilation_planning_par/data/benchmark/planning",  # noqa
+    #         ],
+    #     )
+    # )
 
-    x3_times, x3_timeouts, x3_nodes, x3_edges, x3_par_models = (
-        get_current_results_times(
-            "results/tddnnf_compilation_planning_proj/errors.json",
-            [
-                "results/tddnnf_compilation_planning_proj/data/benchmark/planning",  # noqa
-            ],
-        )
-    )
+    # x3_times, x3_timeouts, x3_nodes, x3_edges, x3_par_models = (
+    #     get_current_results_times(
+    #         "results/tddnnf_compilation_planning_proj/errors.json",
+    #         [
+    #             "results/tddnnf_compilation_planning_proj/data/benchmark/planning",  # noqa
+    #         ],
+    #     )
+    # )
 
-    x4_times, x4_timeouts, x4_nodes, x4_edges, x4_par_models = (
-        get_current_results_times(
-            None,  # "results/tddnnf_compilation_planning_part/errors.json",
-            [
-                "results/tddnnf_compilation_planning_part/data/benchmark/planning",  # noqa
-            ],
-        )
-    )
+    # x4_times, x4_timeouts, x4_nodes, x4_edges, x4_par_models = (
+    #     get_current_results_times(
+    #         None,  # "results/tddnnf_compilation_planning_part/errors.json",
+    #         [
+    #             "results/tddnnf_compilation_planning_part/data/benchmark/planning",  # noqa
+    #         ],
+    #     )
+    # )
 
-    print("Previous timeouts", prev_timeouts)
-    print("Current timeouts", curr_timeouts)
+    ###############################################################################
+    ###############################################################################
 
-    prev_keys = set(previous_times.keys())
-    curr_keys = set(current_times.keys())
-    print("Missing keys:", prev_keys - curr_keys)
+    # print("Previous timeouts", prev_timeouts)
+    # print("Current timeouts", curr_timeouts)
 
-    # create_bar_plot(previous_times, current_times)
-    prev_solver = "Baseline"
-    curr_solver = "D&C"
+    # prev_keys = set(previous_times.keys())
+    # curr_keys = set(current_times.keys())
+    # print("Missing keys:", prev_keys - curr_keys)
+
+    # # create_bar_plot(previous_times, current_times)
+    # prev_solver = "Baseline"
+    # curr_solver = "D&C"
     x3_solver = "D&C+Proj"
-    x4_solver = "D&C+Proj+Part"
+    # x4_solver = "D&C+Proj+Part"
 
-    # Scatter - Compilation time
-    create_scatter_plot(
-        current_times,
-        previous_times,
-        curr_solver,
-        prev_solver,
-        out_path="seq_vs_par45_comp_time.pdf",
+    # # Scatter - Compilation time
+    # create_scatter_plot(
+    #     current_times,
+    #     previous_times,
+    #     curr_solver,
+    #     prev_solver,
+    #     out_path="seq_vs_par45_comp_time.pdf",
+    # )
+
+    # create_scatter_plot(
+    #     x3_times,
+    #     current_times,
+    #     x3_solver,
+    #     curr_solver,
+    #     out_path="par45_vs_par45_proj_atoms_comp_time.pdf",
+    # )
+
+    # create_scatter_plot(
+    #     x4_times,
+    #     x3_times,
+    #     x4_solver,
+    #     x3_solver,
+    #     out_path="par45_proj_vs_part_atoms_comp_time.pdf",
+    # )
+
+    # create_scatter_plot(
+    #     x4_times,
+    #     previous_times,
+    #     x4_solver,
+    #     prev_solver,
+    #     out_path="seq_vs_part_atoms_comp_time.pdf",
+    # )
+
+    # # Scatter - dDNNF edges
+    # create_counter_scatter_plot(
+    #     curr_edges,
+    #     prev_edges,
+    #     curr_solver,
+    #     prev_solver,
+    #     "seq_vs_par45_ddnnf_edges.pdf",
+    # )
+
+    # create_counter_scatter_plot(
+    #     x3_edges,
+    #     curr_edges,
+    #     x3_solver,
+    #     curr_solver,
+    #     "par45_vs_par45_proj_atoms_ddnnf_edges.pdf",
+    # )
+
+    # create_counter_scatter_plot(
+    #     x4_edges,
+    #     x3_edges,
+    #     x4_solver,
+    #     x3_solver,
+    #     "par45_proj_vs_part_ddnnf_edges.pdf",
+    # )
+
+    # create_counter_scatter_plot(
+    #     x4_edges,
+    #     prev_edges,
+    #     x4_solver,
+    #     prev_solver,
+    #     "seq_vs_part_ddnnf_edges.pdf",
+    # )
+
+    # # Scatter - dDNNF nodes
+    # create_counter_scatter_plot(
+    #     curr_nodes,
+    #     prev_nodes,
+    #     curr_solver,
+    #     prev_solver,
+    #     "seq_vs_par45_ddnnf_nodes.pdf",
+    # )
+
+    # create_counter_scatter_plot(
+    #     x4_nodes,
+    #     prev_nodes,
+    #     x4_solver,
+    #     prev_solver,
+    #     "seq_vs_part_ddnnf_nodes.pdf",
+    # )
+
+    # create_counter_scatter_plot(
+    #     x3_nodes,
+    #     curr_nodes,
+    #     x3_solver,
+    #     curr_solver,
+    #     "par45_vs_par45_proj_atoms_ddnnf_nodes.pdf",
+    # )
+
+    # create_counter_scatter_plot(
+    #     x4_nodes,
+    #     x3_nodes,
+    #     x4_solver,
+    #     x3_solver,
+    #     "par45_proj_vs_part_ddnnf_nodes.pdf",
+    # )
+
+    # # Cactus - compilation times
+    # create_cactus_plot(
+    #     previous_times,
+    #     current_times,
+    #     prev_solver,
+    #     curr_solver,
+    #     third=x3_times,
+    #     third_label=x3_solver,
+    #     fourth=x4_times,
+    #     fourth_label=x4_solver,
+    #     out_path="cactus_seq_vs_par45_vs_par45_proj_vs_part_comp_time.pdf",
+    # )
+
+    ###########################################################################
+    ###########################################################################
+    # T-d-DNNF paper
+    x3_times, x3_timeouts, x3_nodes, x3_edges, x3_par_models, x3_phi_sizes = (
+        get_current_results_times(
+            "results/tddnnf_compilation_rand_proj/errors.json",
+            [
+                "results/tddnnf_compilation_rand_proj/data/michelutti_tdds/ldd_randgen/data",  # noqa
+                "results/tddnnf_compilation_rand_proj/data/michelutti_tdds/randgen/data",  # noqa
+            ],
+        )
     )
 
-    create_scatter_plot(
-        x3_times,
-        current_times,
-        x3_solver,
-        curr_solver,
-        out_path="par45_vs_par45_proj_atoms_comp_time.pdf",
-    )
-
-    create_scatter_plot(
-        x4_times,
-        x3_times,
-        x4_solver,
-        x3_solver,
-        out_path="par45_proj_vs_part_atoms_comp_time.pdf",
-    )
-
-    create_scatter_plot(
-        x4_times,
-        previous_times,
-        x4_solver,
-        prev_solver,
-        out_path="seq_vs_part_atoms_comp_time.pdf",
-    )
-
-    # Scatter - dDNNF edges
     create_counter_scatter_plot(
-        curr_edges,
-        prev_edges,
-        curr_solver,
-        prev_solver,
-        "seq_vs_par45_ddnnf_edges.pdf",
-    )
-
-    create_counter_scatter_plot(
-        x3_edges,
-        curr_edges,
-        x3_solver,
-        curr_solver,
-        "par45_vs_par45_proj_atoms_ddnnf_edges.pdf",
-    )
-
-    create_counter_scatter_plot(
-        x4_edges,
-        x3_edges,
-        x4_solver,
-        x3_solver,
-        "par45_proj_vs_part_ddnnf_edges.pdf",
-    )
-
-    create_counter_scatter_plot(
-        x4_edges,
-        prev_edges,
-        x4_solver,
-        prev_solver,
-        "seq_vs_part_ddnnf_edges.pdf",
-    )
-
-    # Scatter - dDNNF nodes
-    create_counter_scatter_plot(
-        curr_nodes,
-        prev_nodes,
-        curr_solver,
-        prev_solver,
-        "seq_vs_par45_ddnnf_nodes.pdf",
-    )
-
-    create_counter_scatter_plot(
-        x4_nodes,
-        prev_nodes,
-        x4_solver,
-        prev_solver,
-        "seq_vs_part_ddnnf_nodes.pdf",
-    )
-
-    create_counter_scatter_plot(
-        x3_nodes,
-        curr_nodes,
-        x3_solver,
-        curr_solver,
-        "par45_vs_par45_proj_atoms_ddnnf_nodes.pdf",
-    )
-
-    create_counter_scatter_plot(
-        x4_nodes,
-        x3_nodes,
-        x4_solver,
-        x3_solver,
-        "par45_proj_vs_part_ddnnf_nodes.pdf",
-    )
-
-    # Cactus - compilation times
-    create_cactus_plot(
-        previous_times,
-        current_times,
-        prev_solver,
-        curr_solver,
-        third=x3_times,
-        third_label=x3_solver,
-        fourth=x4_times,
-        fourth_label=x4_solver,
-        out_path="cactus_seq_vs_par45_vs_par45_proj_vs_part_comp_time.pdf",
+        previous=x3_nodes,
+        current=x3_phi_sizes,
+        previous_label="T-d-DNNF",
+        current_label="PHI DAG nodes",
+        out_path="phi_nodes_vs_nnf_nodes.pdf",
+        use_log_scale=True,
+        x_axis_ticks_rotation=0,
+        alpha=0.4,
+        upperbound=10**5 * 2,
     )
