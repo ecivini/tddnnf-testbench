@@ -1,7 +1,10 @@
 from enumerators.solvers.mathsat_total import MathSATTotalEnumerator
+from enumerators.solvers.solver import SMTEnumerator
 from pysmt.shortcuts import read_smtlib, And
 from pysmt.fnode import FNode
 from theorydd.formula import get_normalized
+from theorydd.tdd.theory_bdd import TheoryBDD
+from theorydd.tdd.theory_sdd import TheorySDD
 from ddnnife import Ddnnf
 from query_utils import generate_ce_cubes
 from nnf_utils import load_mapping
@@ -95,11 +98,55 @@ def tddnnf_mc_ua(
     return int(str(count[0])), end - start
 
 
+def tbdd_mc_ua(
+    phi: FNode, query: FNode, tbdd_base_path: str, normalizer: SMTEnumerator
+) -> tuple[int, float]:
+    tbdd = TheoryBDD(phi, folder_name=tbdd_base_path, solver=normalizer)
+
+    start = time.time()
+    literals = list(query.args()) if query.is_and() else [query]
+    for lit in literals:
+        is_neg = lit.is_not()
+        atom = lit.arg(0) if is_neg else lit
+
+        abstr_atom = tbdd.abstraction[atom]
+        label = f"-{abstr_atom}" if is_neg else abstr_atom
+
+        tbdd.condition(label)
+
+    count = tbdd.count_models()
+    end = time.time()
+
+    return int(count), end - start
+
+
+def tsdd_mc_ua(
+    phi: FNode, query: FNode, tsdd_base_path: str, normalizer: SMTEnumerator
+) -> tuple[int, float]:
+    tsdd = TheorySDD(phi, folder_name=tsdd_base_path, solver=normalizer)
+
+    start = time.time()
+    literals = list(query.args()) if query.is_and() else [query]
+    for lit in literals:
+        is_neg = lit.is_not()
+        atom = lit.arg(0) if is_neg else lit
+
+        abstr_atom = tsdd.abstraction[atom]
+        label = -abstr_atom if is_neg else abstr_atom
+
+        tsdd.condition(label)
+
+    count = tsdd.count_models()
+    end = time.time()
+
+    return int(count), end - start
+
+
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 6:
         print(
             "Usage: python3 scripts/tasks/query_ce_task.py <input formula> "
-            "<base output path> <nnf_path>"
+            "<base output path> <nnf_path> <tsdd_path> <tbdd_path>"
         )
         sys.exit(1)
 
@@ -124,8 +171,13 @@ def main():
     mapping_path = os.path.join(mapping_path, "mapping", "mapping.json")
     abstraction, _ = load_mapping(normalizer_solver, mapping_path)
 
+    # Get DDs paths
+    tsdd_base_path = sys.argv[4]
+    use_tsdds = tsdd_base_path != "none"
+    tbdd_base_path = sys.argv[5]
+    use_tbdds = tbdd_base_path != "none"
+
     logs = {"MC": {}}
-    errors = {}
 
     # Generate 50 queries so that it's unlikely to find more than 40 unsat cases
     queries = generate_ce_cubes(solver=normalizer_solver, phi=phi, desired_cub_num=50)
@@ -142,6 +194,22 @@ def main():
         # Compute t-d-DNNF result
         nnf_count, nnf_time = tddnnf_mc_ua(ddnnf, query, abstraction)
 
+        tbdd_result, tbdd_time = None, None
+        if use_tbdds:
+            tbdd_result, tbdd_time = tbdd_mc_ua(
+                phi, query, tbdd_base_path, normalizer_solver
+            )
+            print("T-BDD:", tbdd_result, tbdd_time)
+            assert nnf_count == tbdd_result, "d-DNNF and OBDD counts should match"
+
+        tsdd_result, tsdd_time = None, None
+        if use_tsdds:
+            tsdd_result, tsdd_time = tsdd_mc_ua(
+                phi, query, tsdd_base_path, normalizer_solver
+            )
+            print("T-SDD:", tsdd_result, tsdd_time)
+            assert nnf_count == tsdd_result, "d-DNNF and OBDD counts should match"
+
         assert (
             smt_count < 0 or smt_count == nnf_count
         ), f"Counts should match: {smt_count} vs {nnf_count}"
@@ -153,10 +221,10 @@ def main():
                 "AllSMT count": smt_count,
                 "d-DNNF time": nnf_time,
                 "d-DNNF count": nnf_count,
-                "T-BDD time": None,
-                "T-BDD count": None,
-                "T-SDD time": None,
-                "T-SDD count": None,
+                "T-BDD time": tbdd_time,
+                "T-BDD count": tbdd_result,
+                "T-SDD time": tsdd_time,
+                "T-SDD count": tsdd_result,
                 "AllSMT timeout": smt_count < 0,
             }
             logs["MC"][str(query)] = log

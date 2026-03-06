@@ -413,13 +413,20 @@ def query_mc_ua_task(data: dict) -> tuple:
     if data["nnf_path"] is None:
         return False, data["formula_path"], "Missing T-d-DNNF"
 
+    if data["bdd_path"] is None:
+        data["bdd_path"] = "none"
+
+    if data["sdd_path"] is None:
+        data["sdd_path"] = "none"
+
     compilation_succeeded = True
     error_message = ""
     try:
         print(f"[+] [MCUA] Querying formula {data['formula_path']}...")
         command = (
             f"python3 scripts/tasks/query_mc_ua_task.py {data['formula_path']} "
-            f"{data['base_output_path']} {data['nnf_path']}"
+            f"{data['base_output_path']} {data['nnf_path']} {data["sdd_path"]} "
+            f"{data["bdd_path"]}"
         )
         print(command)
         command = command.split(" ")
