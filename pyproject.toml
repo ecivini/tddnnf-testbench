@@ -51,7 +51,6 @@ dependencies = [
     "smmap==5.0.2",
     "stua==0.3",
     "theorydd @ git+https://github.com/ecivini/tddnnf@main",
-    "tlemmas_enumeration @ git+https://github.com/ecivini/tlemmas-enumeration@divide-and-conquer-with-projection",
     "wheel==0.45.1",
 ]
 
