@@ -395,8 +395,8 @@ if __name__ == "__main__":
     create_scatter_plot(
         x_data=phi_sizes,
         y_data=dd_sizes,
-        x_label="PHI DAG nodes",
-        y_label="T-SDD",
+        x_label="input formula",
+        y_label="T-red SDD",
         out_path="phi_nodes_vs_tsdd_nodes.pdf",
         log_scale=True,
         upperbound=10**5 * 2,

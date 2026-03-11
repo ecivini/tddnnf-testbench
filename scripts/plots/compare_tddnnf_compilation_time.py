@@ -617,8 +617,8 @@ if __name__ == "__main__":
     create_counter_scatter_plot(
         previous=x3_nodes,
         current=x3_phi_sizes,
-        previous_label="T-d-DNNF",
-        current_label="PHI DAG nodes",
+        previous_label="T-red d-DNNF",
+        current_label="input formula",
         out_path="phi_nodes_vs_nnf_nodes.pdf",
         use_log_scale=True,
         x_axis_ticks_rotation=0,

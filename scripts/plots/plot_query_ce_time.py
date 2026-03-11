@@ -3,6 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MultipleLocator
 
 
 def get_results(path: str) -> tuple:
@@ -85,7 +86,7 @@ def create_cactus_plot(
     x2_cleaned = data_to_times_list(x2_times)
     x3_cleaned = data_to_times_list(x3_times)
     x4_cleaned = data_to_times_list(x4_times)
-    x5_cleaned = data_to_times_list(x1_times)
+    x5_cleaned = data_to_times_list(x5_times)
 
     x6_cleaned = []
     if x6_times:
@@ -112,26 +113,31 @@ def create_cactus_plot(
     x7 = np.arange(1, len(x7_cleaned) + 1)
 
     # Plot
-    plt.figure(figsize=(9, 6))
+    # plt.figure(figsize=(9, 6)) # For thesis
+    plt.figure(figsize=(5, 5))  # For paper
     # if include_allsmt:
     plt.plot(x1, x1_cleaned, label=x1_label, marker="o", markersize=1)
     plt.plot(x2, x2_cleaned, label=x2_label, marker="o", markersize=1)
-    plt.plot(x3, x3_cleaned, label=x3_label, marker="o", markersize=1)
-    plt.plot(x4, x4_cleaned, label=x4_label, marker="o", markersize=1)
-    plt.plot(x5, x5_cleaned, label=x5_label, marker="o", markersize=1)
+    plt.plot(x3, x3_cleaned, label=x3_label, marker="o", markersize=1, color="green")
+    plt.plot(x4, x4_cleaned, label=x4_label, marker="o", markersize=1, color="red")
+    plt.plot(x5, x5_cleaned, label=x5_label, marker="o", markersize=1, color="purple")
     if x6_times:
         plt.plot(x6, x6_cleaned, label=x6_label, marker="o", markersize=1)
     if x7_times:
         plt.plot(x7, x7_cleaned, label=x7_label, marker="o", markersize=1)
 
-    plt.xlabel("Queried problems (CE)", fontsize=24)
+    plt.xlabel("Queried problems", fontsize=24)
     plt.ylabel("Time (s)", fontsize=24)
     plt.grid(True)
     plt.legend(fontsize=18)
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
+
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(MultipleLocator(5000))
+
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig(out_path, bbox_inches="tight", pad_inches=0)
 
 
 def create_scatter_plot(
@@ -140,6 +146,10 @@ def create_scatter_plot(
     x_label: str,
     y_label: str,
     out_path: str = "scatter.pdf",
+    alpha: float = 1.0,
+    xticks_rotation: int = 45,
+    upperbound: float = 0.0,
+    use_log_scale: bool = False,
 ):
     x_sat_times = []
     y_sat_times = []
@@ -183,7 +193,7 @@ def create_scatter_plot(
                 y_unsat_times.append(y_record[0])
             current_max = max(current_max, x_record[0], y_record[0])
 
-    timeout = current_max
+    timeout = current_max if upperbound == 0.0 else upperbound
 
     print("\n\n", out_path)
     print("CE holds:", len(x_sat_times))
@@ -200,7 +210,7 @@ def create_scatter_plot(
         edgecolors="black",
         s=100,
         zorder=5,
-        alpha=1,
+        alpha=alpha,
         marker="X",
     )
 
@@ -211,7 +221,7 @@ def create_scatter_plot(
         edgecolors="black",
         s=100,
         zorder=4,
-        alpha=1,
+        alpha=alpha,
         marker="X",
     )
 
@@ -240,11 +250,14 @@ def create_scatter_plot(
     # Set symlog scale
     # ax.set_xscale("symlog", linthresh=1)
     # ax.set_yscale("symlog", linthresh=1)
+    if use_log_scale:
+        ax.set_xscale("log")
+        ax.set_yscale("log")
     ax.set_aspect("equal")
 
     # Set limits
-    ax.set_xlim(left=1e-8, right=timeout * 1.1)
-    ax.set_ylim(bottom=1e-8, top=timeout * 1.1)
+    ax.set_xlim(left=1e-6, right=timeout * 1.1)
+    ax.set_ylim(bottom=1e-6, top=timeout * 1.1)
 
     # Labelsout_path
     ax.set_xlabel(f"{x_label}", fontsize=24)
@@ -259,10 +272,10 @@ def create_scatter_plot(
     # plt.title(f"Query comparison: {x_label} vs {y_label}")
 
     # Show plot
-    plt.xticks(fontsize=18, rotation=45)
+    plt.xticks(fontsize=18, rotation=xticks_rotation)
     plt.yticks(fontsize=18)
     plt.tight_layout()
-    plt.savefig(out_path)
+    plt.savefig(out_path, bbox_inches="tight", pad_inches=0)
 
 
 def get_all_logs(base_path: str) -> tuple:
@@ -303,8 +316,8 @@ if __name__ == "__main__":
     ###########################################################################
     # RANDOM
 
-    # tbdd_type = "T-OBDD"
-    # tsdd_type = "T-SDD"
+    tbdd_type = "T-OBDD"
+    tsdd_type = "T-SDD"
 
     # # Incremental SMT vs T-d-DNNNF (Sequential)
     # x1_path = "results/query_ce_rand_seq_above100s/data"
@@ -323,7 +336,7 @@ if __name__ == "__main__":
     # x4_path = "results/query_ce_rand_part_above100s/data"
     # x4_nnf_type = "T-d-DNNF (Part)"
 
-    # SMT vs T-d-DNNNF (Sequential)
+    # # SMT vs T-d-DNNNF (Sequential)
     # x4_path = "results/test_query_ce_full_seq/data"
     # x4_nnf_type = "T-d-DNNF (D&C+Proj+Part)"
     # smt_type = "SMT"
@@ -339,101 +352,101 @@ if __name__ == "__main__":
     ###########################################################################
     # PLANNING
 
-    # # Incremental SMT vs T-d-DNNNF (Sequential)
-    # x1_path = "results/query_ce_plan_seq/data"
-    # x1_nnf_type = "T-d-DNNF (Baseline)"
-    # incr_smt_type = "Incremental SMT"
+    # Incremental SMT vs T-d-DNNNF (Sequential)
+    x1_path = "results/query_ce_plan_seq/data"
+    x1_nnf_type = "T-d-DNNF (Baseline)"
+    incr_smt_type = "Incremental SMT"
 
-    # # Incremental SMT vs T-d-DNNNF (Parallel)
-    # x2_path = "results/query_ce_plan_par/data"
-    # x2_nnf_type = "T-d-DNNF (D&C)"
+    # Incremental SMT vs T-d-DNNNF (Parallel)
+    x2_path = "results/query_ce_plan_par/data"
+    x2_nnf_type = "T-d-DNNF (D&C)"
 
-    # # Incremental SMT vs T-d-DNNNF (Paralle with Projection)
-    # x3_path = "results/query_ce_plan_proj/data"
-    # x3_nnf_type = "T-d-DNNF (Proj)"
+    # Incremental SMT vs T-d-DNNNF (Paralle with Projection)
+    x3_path = "results/query_ce_plan_proj/data"
+    x3_nnf_type = "T-d-DNNF (Proj)"
 
-    # # Incremental SMT vs T-d-DNNNF (Paralle with Projection and Partitionings)
-    # x4_path = "results/query_ce_plan_part/data"
-    # x4_nnf_type = "T-d-DNNF (Part)"
+    # Incremental SMT vs T-d-DNNNF (Paralle with Projection and Partitionings)
+    x4_path = "results/query_ce_plan_part/data"
+    x4_nnf_type = "T-d-DNNF (Part)"
 
-    # (
-    #     x1_smt_times,
-    #     # x1_smt_counts,
-    #     x1_tddnnf_times,
-    #     # x1_tddnnf_counts,
-    #     x1_tbdd_times,
-    #     # x1_tbdd_counts,
-    #     x1_tsdd_times,
-    #     # x1_tsdd_counts,
-    # ) = get_all_logs(x1_path)
+    (
+        x1_smt_times,
+        # x1_smt_counts,
+        x1_tddnnf_times,
+        # x1_tddnnf_counts,
+        x1_tbdd_times,
+        # x1_tbdd_counts,
+        x1_tsdd_times,
+        # x1_tsdd_counts,
+    ) = get_all_logs(x1_path)
 
-    # (
-    #     x2_smt_times,
-    #     # x2_smt_counts,
-    #     x2_tddnnf_times,
-    #     # x2_tddnnf_counts,
-    #     x2_tbdd_times,
-    #     # x2_tbdd_counts,
-    #     x2_tsdd_times,
-    #     # x2_tsdd_counts,
-    # ) = get_all_logs(x2_path)
+    (
+        x2_smt_times,
+        # x2_smt_counts,
+        x2_tddnnf_times,
+        # x2_tddnnf_counts,
+        x2_tbdd_times,
+        # x2_tbdd_counts,
+        x2_tsdd_times,
+        # x2_tsdd_counts,
+    ) = get_all_logs(x2_path)
 
-    # (
-    #     x3_smt_times,
-    #     # x3_smt_counts,
-    #     x3_tddnnf_times,
-    #     # x3_tddnnf_counts,
-    #     x3_tbdd_times,
-    #     # x3_tbdd_counts,
-    #     x3_tsdd_times,
-    #     # x3_tsdd_counts,
-    # ) = get_all_logs(x3_path)
+    (
+        x3_smt_times,
+        # x3_smt_counts,
+        x3_tddnnf_times,
+        # x3_tddnnf_counts,
+        x3_tbdd_times,
+        # x3_tbdd_counts,
+        x3_tsdd_times,
+        # x3_tsdd_counts,
+    ) = get_all_logs(x3_path)
 
-    # (
-    #     x4_smt_times,
-    #     # x4_smt_counts,
-    #     x4_tddnnf_times,
-    #     # x4_tddnnf_counts,
-    #     x4_tbdd_times,
-    #     # x4_tbdd_counts,
-    #     x4_tsdd_times,
-    #     # x4_tsdd_counts,
-    # ) = get_all_logs(x4_path)
+    (
+        x4_smt_times,
+        # x4_smt_counts,
+        x4_tddnnf_times,
+        # x4_tddnnf_counts,
+        x4_tbdd_times,
+        # x4_tbdd_counts,
+        x4_tsdd_times,
+        # x4_tsdd_counts,
+    ) = get_all_logs(x4_path)
 
     # ###########################################################
 
-    # # vs Incremental SMT plots
-    # create_scatter_plot(
-    #     x_data=x1_smt_times,
-    #     y_data=x1_tddnnf_times,
-    #     x_label=incr_smt_type,
-    #     y_label=x1_nnf_type,
-    #     out_path="inc_smt_vs_seq_ce_query.pdf",
-    # )
+    # vs Incremental SMT plots
+    create_scatter_plot(
+        x_data=x1_smt_times,
+        y_data=x1_tddnnf_times,
+        x_label=incr_smt_type,
+        y_label=x1_nnf_type,
+        out_path="inc_smt_vs_seq_ce_query.pdf",
+    )
 
-    # create_scatter_plot(
-    #     x_data=x2_smt_times,
-    #     y_data=x2_tddnnf_times,
-    #     x_label=incr_smt_type,
-    #     y_label=x2_nnf_type,
-    #     out_path="inc_smt_vs_par_ce_query.pdf",
-    # )
+    create_scatter_plot(
+        x_data=x2_smt_times,
+        y_data=x2_tddnnf_times,
+        x_label=incr_smt_type,
+        y_label=x2_nnf_type,
+        out_path="inc_smt_vs_par_ce_query.pdf",
+    )
 
-    # create_scatter_plot(
-    #     x_data=x3_smt_times,
-    #     y_data=x3_tddnnf_times,
-    #     x_label=incr_smt_type,
-    #     y_label=x3_nnf_type,
-    #     out_path="inc_smt_vs_proj_ce_query.pdf",
-    # )
+    create_scatter_plot(
+        x_data=x3_smt_times,
+        y_data=x3_tddnnf_times,
+        x_label=incr_smt_type,
+        y_label=x3_nnf_type,
+        out_path="inc_smt_vs_proj_ce_query.pdf",
+    )
 
-    # create_scatter_plot(
-    #     x_data=x4_smt_times,
-    #     y_data=x4_tddnnf_times,
-    #     x_label=incr_smt_type,
-    #     y_label=x4_nnf_type,
-    #     out_path="inc_smt_vs_part_ce_query.pdf",
-    # )
+    create_scatter_plot(
+        x_data=x4_smt_times,
+        y_data=x4_tddnnf_times,
+        x_label=incr_smt_type,
+        y_label=x4_nnf_type,
+        out_path="inc_smt_vs_part_ce_query.pdf",
+    )
 
     # # vs OBDD plots
     # create_scatter_plot(
@@ -572,43 +585,118 @@ if __name__ == "__main__":
     #########################################################
     #########################################################
 
-    # Plots for SAT paper
-    # Incremental SMT vs T-d-DNNNF (Sequential)
-    x1_path = "data/results/query_ce_rand_proj_all_incr_smt/data"
-    x1_nnf_type = "T-d-DNNF"
-    incr_smt_type = "Incremental SMT"
+    # # Plots for SAT paper
+    # # Incremental SMT vs T-d-DNNNF (Sequential)
+    # x1_path = "data/results/query_ce_rand_proj_all_incr_smt/data"
+    # x1_nnf_type = "T-red d-DNNF"
+    # incr_smt_type = "Incremental SMT"
 
-    # Incremental SMT vs T-d-DNNNF (Parallel)
-    x2_path = "data/results/query_ce_rand_proj_all_NO_INCR_SMT/data"
-    x2_nnf_type = "T-d-DNNF"
-    smt_type = "SMT"
+    # # Incremental SMT vs T-d-DNNNF (Parallel)
+    # x2_path = "data/results/query_ce_rand_proj_all_NO_INCR_SMT/data"
+    # x2_nnf_type = "T-red d-DNNF"
+    # smt_type = "SMT"
+    # tbdd_type = "T-red OBDD"
+    # tsdd_type = "T-red SDD"
 
-    (
-        x1_incr_smt_times,
-        x1_tddnnf_times,
-        x1_tbdd_times,
-        x1_tsdd_times,
-    ) = get_all_logs(x1_path)
+    # (
+    #     x1_incr_smt_times,
+    #     x1_tddnnf_times,
+    #     x1_tbdd_times,
+    #     x1_tsdd_times,
+    # ) = get_all_logs(x1_path)
 
-    (
-        x2_smt_times,
-        x2_tddnnf_times,
-        x2_tbdd_times,
-        x2_tsdd_times,
-    ) = get_all_logs(x2_path)
+    # (
+    #     x2_smt_times,
+    #     x2_tddnnf_times,
+    #     x2_tbdd_times,
+    #     x2_tsdd_times,
+    # ) = get_all_logs(x2_path)
 
-    create_scatter_plot(
-        x_data=x1_incr_smt_times,
-        y_data=x1_tddnnf_times,
-        x_label=incr_smt_type,
-        y_label=x1_nnf_type,
-        out_path="incr_smt_vs_nnf_ce_query.pdf",
-    )
+    # # d-DNNF
+    # create_scatter_plot(
+    #     x_data=x1_incr_smt_times,
+    #     y_data=x1_tddnnf_times,
+    #     x_label=incr_smt_type,
+    #     y_label=x1_nnf_type,
+    #     out_path="incr_smt_vs_nnf_ce_query.pdf",
+    #     alpha=0.4,
+    #     xticks_rotation=0,
+    #     upperbound=2,
+    #     use_log_scale=True,
+    # )
 
-    create_scatter_plot(
-        x_data=x2_smt_times,
-        y_data=x2_tddnnf_times,
-        x_label=smt_type,
-        y_label=x2_nnf_type,
-        out_path="smt_vs_nnf_ce_query.pdf",
-    )
+    # create_scatter_plot(
+    #     x_data=x2_smt_times,
+    #     y_data=x2_tddnnf_times,
+    #     x_label=smt_type,
+    #     y_label=x2_nnf_type,
+    #     out_path="smt_vs_nnf_ce_query.pdf",
+    #     alpha=0.4,
+    #     xticks_rotation=0,
+    #     upperbound=2,
+    #     use_log_scale=True,
+    # )
+
+    # # BDD
+    # create_scatter_plot(
+    #     x_data=x1_incr_smt_times,
+    #     y_data=x1_tbdd_times,
+    #     x_label=incr_smt_type,
+    #     y_label=tbdd_type,
+    #     out_path="incr_smt_vs_tobdd_ce_query.pdf",
+    #     alpha=0.4,
+    #     xticks_rotation=0,
+    #     upperbound=2,
+    #     use_log_scale=True,
+    # )
+
+    # create_scatter_plot(
+    #     x_data=x2_smt_times,
+    #     y_data=x2_tbdd_times,
+    #     x_label=smt_type,
+    #     y_label=x2_nnf_type,
+    #     out_path="smt_vs_tobdd_ce_query.pdf",
+    #     alpha=0.4,
+    #     xticks_rotation=0,
+    #     upperbound=2,
+    #     use_log_scale=True,
+    # )
+
+    # # SDD
+    # create_scatter_plot(
+    #     x_data=x1_incr_smt_times,
+    #     y_data=x1_tsdd_times,
+    #     x_label=incr_smt_type,
+    #     y_label=tsdd_type,
+    #     out_path="incr_smt_vs_tsdd_ce_query.pdf",
+    #     alpha=0.4,
+    #     xticks_rotation=0,
+    #     upperbound=2,
+    #     use_log_scale=True,
+    # )
+
+    # create_scatter_plot(
+    #     x_data=x2_smt_times,
+    #     y_data=x2_tsdd_times,
+    #     x_label=smt_type,
+    #     y_label=tsdd_type,
+    #     out_path="smt_vs_tsdd_ce_query.pdf",
+    #     alpha=0.4,
+    #     xticks_rotation=0,
+    #     upperbound=2,
+    #     use_log_scale=True,
+    # )
+
+    # create_cactus_plot(
+    #     x1_times=x1_incr_smt_times,
+    #     x2_times=x2_smt_times,
+    #     x3_times=x2_tddnnf_times,
+    #     x4_times=x2_tbdd_times,
+    #     x5_times=x2_tsdd_times,
+    #     x1_label=incr_smt_type,
+    #     x2_label=smt_type,
+    #     x3_label=x1_nnf_type,
+    #     x4_label=tbdd_type,
+    #     x5_label=tsdd_type,
+    #     out_path="cactus_query_ce_all.pdf",
+    # )

@@ -8,9 +8,12 @@ import shutil
 
 TLEMMAS_DIR = "data/results/merged_all_tlemmas_projected"
 PROBLEMS_DIR = "data/michelutti_tdds"
-RESULT_DIR = "data/high_all_smt_time_problems_on_proj_100s"
-DEFAULT_MIN_TIME = 100.0
-DEFAULT_TIMEOUT = 3600.0
+# RESULT_DIR = "data/high_all_smt_time_problems_test"
+RESULT_DIR = "data/high_all_smt_time_problems_proj_0_373s_to_1s{0}"
+# RESULT_DIR = "test{0}"
+DEFAULT_MIN_TIME = 0.373
+DEFAULT_TIMEOUT = 1.0
+SERVER_NAMES = ["_qui", "_quo", "_qua"]
 
 
 def scan_tlemmas(min_allsmt_time: float) -> list:
@@ -44,6 +47,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         min_time = float(sys.argv[1])
 
+    server_index = 0
     for lemmas_file in scan_tlemmas(min_time):
         # Recreate phi file path
         lemmas_file = lemmas_file.replace(TLEMMAS_DIR, PROBLEMS_DIR)
@@ -51,10 +55,14 @@ if __name__ == "__main__":
         pieces = lemmas_file.split("/")[:-1]
         phi_path = "/".join(pieces) + ".smt2"
 
-        target_path = phi_path.replace(PROBLEMS_DIR, RESULT_DIR)
+        result_path = RESULT_DIR.format(SERVER_NAMES[server_index])
+        target_path = phi_path.replace(PROBLEMS_DIR, result_path)
 
         target_dir = os.path.dirname(target_path)
+        print(target_dir)
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
+
+        server_index = (server_index + 1) % len(SERVER_NAMES)
 
         shutil.copyfile(phi_path, target_path)

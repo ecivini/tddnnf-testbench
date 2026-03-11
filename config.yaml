@@ -1,8 +1,8 @@
 # MB of memory per core
-memory: 170000
+memory: 16384 # 16GB
 
 # Maximum allowed solving time per problem in seconds
-timeout: 240
+timeout: 3600 # 1h
 
 # Number of concurrent evaluations running
 processes: 1
@@ -14,13 +14,21 @@ allsmt_processes: 14
 # Benchmarks
 benchmarks: [
   # Base test cases
-  "data/benchmark/planning/h3/Painter"
-  # "data/benchmark/ldd_randgen",
-  # "data/benchmark/randgen"
+  # "data/benchmark/planning/h3/Painter",
+  # "data/benchmark/planning/h4/Painter",
+  # "data/benchmark/planning/h5/Painter"
 ] 
 
-# T-Lemmas base path
-tlemmas_dir: "data/results/planning_h3_parallel/planning_h3_1Prob_45Procs"
+###############################################################
+
+# Path to the enumerated T-lemmas
+tlemmas_dir: ""
+
+# Path to the compile T-d-DNNFs
+tddnnf_dir: ""
+
+# Ground truth T-lemmas (only for tests)
+gt_tlemmas_dir: "" 
 
 # Output dir, add a / to the end
 results: "results/"
