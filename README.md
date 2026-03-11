@@ -1,35 +1,55 @@
-# Master's thesis project
+# Experimental evaluation scripts for the paper "d-DNNF Modulo Theories: A General Framework for Polytime SMT Queries"
 
 ## Dependencies
 
-This repository depends mostly on [tddnnf](https://github.com/ecivini/tddnnf), which is an implementation of ... (TODO: Add references to algorithm), based on the [TheoryConsistentDecisionDiagrams](https://github.com/MaxMichelutti/TheoryConsistentDecisionDiagrams) package.
-
-In order to install it, run:
 ```bash
-$ virtualenv env
-$ source env/bin/activate
-$ pip3 install theorydd@git+https://github.com/ecivini/tddnnf@main
+# Install dependencies
+$ pip3 install .
+
+# Install MathSAT via PySMT
+$ pysmt-install --msat
 ```
 
-## Scripts
+## How to run
 
-This directory contains the scripts I used to help me complete this project.
+### Compiling T-lemmas
 
-### extract_benchmark_files.py
+In order to compile T-lemmas, use the instructions provided [in this repository](https://github.com/ecivini/tlemmas-enumeration-testbench).
 
-Extracts SMT2 problem files corresponding to successful Michelutti TBDD results and copies them into the [benchmark folder](data/benchmark/). To use it, copy
-the results of the tests done by Massimo in a folder called *data/michelutti_tdds*, then run:
+### Compiling T-d-DNNF
 
+First of all, you need to update the config.yaml file.
 ```bash
-$ cd <root of this repository>
-$ python3 scripts/extract_benchmark_files.py 
+$ nano config.yaml
 ```
 
-### benchmark_controller.py
+In particular, you need to specify `tlemmas_dir` with the directory containing your compiled T-lemmas. Then, you need to configure `benchmarks` with the
+paths to the benchmark files to use. They must correspond to the ones
+used for T-lemmas enumeration
 
-As of now, it executes the compilation tasks of the test cases specified in the config.yaml file. Its output contains the t-d-DNNF formula in SMT-LIB together with the boolean abstraction and mapping of each test case. To use it, run:
-
+Then, run the benchmark controller:
 ```bash
-$ cd <root of this repository>
-$ python3 scripts/benchmark_controler.py 
+# Compile T-d-DNNF
+$ python3 scripts/benchmark_controller.py tddnnfonly <output_path>
 ```
+
+### Running queries
+
+In your `config.yaml`, you need to specify `benchmark` as before, then
+`tddnnf_dir` with the directory containing the output T-d-DNNFs.
+
+Once done, run the benchmark controller:
+```bash
+# Run MC queries
+$ python3 scripts/benchmark_controller.py query_mc <output_folder> 
+
+# Run MC Under Assumptions queries
+$ python3 scripts/benchmark_controller.py query_mcua <output_folder> 
+
+# Run CE queries
+$ python3 scripts/benchmark_controller.py query_ce <output_folder> 
+```
+
+In particular, for CE queries it's possible to decide to run using
+SMT or incremental SMT (the default). To change this behavior,
+edit the file `scripts/tasks/query_ce_task.py` at line 20.
